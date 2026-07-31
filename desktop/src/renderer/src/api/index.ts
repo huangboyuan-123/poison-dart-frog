@@ -55,7 +55,7 @@ export function executeSQL(sql: string, readOnly = true): Promise<{ data: Execut
 }
 
 export function getHealth(): Promise<{ data: HealthResponse }> {
-  return api.get('/api/health')
+  return api.get('/health')
 }
 
 export function getSchema(): Promise<{ data: SchemaResponse }> {
