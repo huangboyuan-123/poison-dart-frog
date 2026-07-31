@@ -2,7 +2,7 @@
   "name": "sqlagent-desktop",
   "version": "0.1.0",
   "description": "SQLAgent Desktop — AI 数据库操控桌面客户端",
-  "main": "./out/main/index.js",
+  "main": "./out/main/main.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
