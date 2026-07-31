@@ -1,85 +1,47 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { getHealth, type HealthResponse } from '../api'
 
-const health = ref<HealthResponse | null>(null)
-const apiOnline = ref(false)
-let timer: ReturnType<typeof setInterval> | null = null
+const dbOk = ref(false)
+const historyCount = ref(0)
+let timer: any = null
 
-async function checkHealth() {
+async function check() {
   try {
-    const res = await getHealth()
-    health.value = res.data
-    apiOnline.value = true
-  } catch {
-    apiOnline.value = false
-    health.value = null
-  }
+    // 简单 ping 后端
+    const res = await fetch('http://localhost:8000/health')
+    const d = await res.json()
+    dbOk.value = d.database === true
+  } catch { dbOk.value = false }
+  try {
+    const h = await window.api.getHistory()
+    historyCount.value = h.length
+  } catch {}
 }
 
-onMounted(() => {
-  checkHealth()
-  timer = setInterval(checkHealth, 15000) // 每15秒检查一次
-})
-
-onUnmounted(() => {
-  if (timer) clearInterval(timer)
-})
+onMounted(() => { check(); timer = setInterval(check, 15000) })
+onUnmounted(() => clearInterval(timer))
 </script>
 
 <template>
-  <footer class="status-bar">
-    <div class="status-left">
-      <span class="status-dot" :class="{ online: apiOnline, offline: !apiOnline }" />
-      <span class="status-text">{{ apiOnline ? 'API 已连接' : 'API 离线' }}</span>
+  <footer class="statusbar">
+    <div class="s-left">
+      <span class="dot" :class="dbOk ? 'ok' : 'err'" />
+      <span>{{ dbOk ? 'MySQL 已连接' : 'MySQL 断开' }}</span>
     </div>
-    <div class="status-right">
-      <span v-if="health" class="status-item">
-        MySQL: {{ health.database ? 'OK' : '离线' }}
-        <span class="mini-dot" :class="{ ok: health.database, fail: !health.database }" />
-      </span>
-      <span v-if="health" class="status-item">
-        LLM: {{ health.llm ? 'OK' : '离线' }}
-        <span class="mini-dot" :class="{ ok: health.llm, fail: !health.llm }" />
-      </span>
-      <span v-if="health" class="status-version">v{{ health.version }}</span>
+    <div class="s-right">
+      <span>历史: {{ historyCount }} 条</span>
     </div>
   </footer>
 </template>
 
 <style scoped>
-.status-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 28px;
-  padding: 0 14px;
-  background: var(--bg-primary);
-  border-top: 1px solid var(--border-default);
-  flex-shrink: 0;
-  font-size: 11px;
+.statusbar {
+  height: 26px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px; background: var(--bg-primary); border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--text-gray); flex-shrink: 0;
 }
-.status-left, .status-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
-.status-dot.online { background: var(--color-success); box-shadow: 0 0 6px rgba(34,197,94,0.5); }
-.status-dot.offline { background: var(--color-error); }
-.status-text { color: var(--text-secondary); }
-.status-item { color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
-.mini-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  display: inline-block;
-}
-.mini-dot.ok { background: var(--color-success); }
-.mini-dot.fail { background: var(--color-error); }
-.status-version { color: var(--text-muted); }
+.s-left, .s-right { display: flex; align-items: center; gap: 6px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; }
+.dot.ok { background: var(--success); box-shadow: 0 0 4px rgba(63,185,80,0.5); }
+.dot.err { background: var(--danger); }
 </style>
