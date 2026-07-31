@@ -1,0 +1,27 @@
+{
+  "name": "sqlagent-desktop",
+  "version": "0.1.0",
+  "description": "SQLAgent Desktop — AI 数据库操控桌面客户端",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "vue": "^3.5.0",
+    "element-plus": "^2.9.0",
+    "axios": "^1.7.0",
+    "@element-plus/icons-vue": "^2.3.0",
+    "highlight.js": "^11.10.0",
+    "marked": "^14.0.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-vite": "^3.0.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "sass": "^1.80.0",
+    "electron-builder": "^25.0.0"
+  }
+}
