@@ -13,8 +13,8 @@ from fastapi.testclient import TestClient
 
 # 设置测试环境变量
 os.environ["OPENAI_API_KEY"] = "test-key"
-os.environ["MYSQL_HOST"] = "localhost"
-os.environ["MYSQL_PASSWORD"] = "test123"
+os.environ["MYSQL_HOST"] = "root"
+os.environ["MYSQL_PASSWORD"] = "123456"
 
 from sqlagent.main import app  # noqa: E402
 from sqlagent import __version__  # noqa: E402

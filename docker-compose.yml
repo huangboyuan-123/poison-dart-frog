@@ -32,9 +32,11 @@ services:
   mysql:
     image: mysql:8.0
     container_name: sqlagent-mysql
+    env_file:
+      - .env
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-root123}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-sqlagent}
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: sqlagent
       MYSQL_CHARSET: utf8mb4
       MYSQL_COLLATION: utf8mb4_unicode_ci
     ports:
@@ -48,7 +50,7 @@ services:
       - --collation-server=utf8mb4_unicode_ci
       - --default-authentication-plugin=mysql_native_password
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASSWORD:-root123}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
       interval: 10s
       timeout: 5s
       retries: 5

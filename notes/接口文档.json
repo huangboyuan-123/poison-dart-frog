@@ -1,0 +1,358 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SQLAgent API",
+    "description": "AI 驱动的 MySQL 数据库操控 Agent — 用自然语言查询数据库",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Health Check",
+        "description": "健康检查接口。\n\n返回数据库连接和 LLM 连接的状态。\n可用于 Docker healthcheck 和监控系统。",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HealthResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/query": {
+      "post": {
+        "tags": ["query"],
+        "summary": "Natural Language Query",
+        "description": "自然语言查询接口。\n\n将用户的问题转换为 SQL 并执行，返回结构化的查询结果和 AI 分析。\n\n示例请求:\n```json\n{\"question\": \"查询数据库中所有表\"}\n```",
+        "operationId": "natural_language_query_api_query_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/QueryRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/QueryResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/execute": {
+      "post": {
+        "tags": ["query"],
+        "summary": "Execute Sql",
+        "description": "直接执行 SQL 语句。\n\n默认只读模式，需要写操作时设置 read_only=false。\n\n示例请求:\n```json\n{\"sql\": \"SELECT * FROM users LIMIT 5\", \"read_only\": true}\n```",
+        "operationId": "execute_sql_api_execute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ExecuteRequest" }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ExecuteResponse" }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/history": {
+      "get": {
+        "tags": ["query"],
+        "summary": "Query History",
+        "description": "查询历史记录（当前会话）。\n\n注意: 当前版本使用内存存储，重启后清空。",
+        "operationId": "query_history_api_history_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Query History Api History Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schema": {
+      "get": {
+        "tags": ["schema"],
+        "summary": "Get Full Schema",
+        "description": "获取数据库所有表的完整结构。\n\n返回每个表的列名、类型、是否可空、键信息等。",
+        "operationId": "get_full_schema_api_schema_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SchemaResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schema/{table_name}": {
+      "get": {
+        "tags": ["schema"],
+        "summary": "Get Table Schema",
+        "description": "获取指定表的详细结构。\n\nArgs:\n    table_name: 表名（URL 路径参数）",
+        "operationId": "get_table_schema_api_schema__table_name__get",
+        "parameters": [
+          {
+            "name": "table_name",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "title": "Table Name" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HTTPValidationError" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Root",
+        "description": "API 根路径 — 返回服务信息。",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": { "application/json": { "schema": {} } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ExecuteRequest": {
+        "properties": {
+          "sql": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Sql",
+            "description": "要执行的 SQL 语句",
+            "examples": ["SELECT * FROM users LIMIT 10"]
+          },
+          "read_only": {
+            "type": "boolean",
+            "title": "Read Only",
+            "description": "是否只读模式（默认 true，阻止写操作）",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": ["sql"],
+        "title": "ExecuteRequest",
+        "description": "直接 SQL 执行请求。"
+      },
+      "ExecuteResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "执行是否成功"
+          },
+          "sql": {
+            "type": "string",
+            "title": "Sql",
+            "description": "执行的 SQL"
+          },
+          "data": {
+            "anyOf": [{ "type": "object" }, { "type": "null" }],
+            "title": "Data",
+            "description": "执行结果"
+          },
+          "error": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Error",
+            "description": "错误信息（如有）"
+          }
+        },
+        "type": "object",
+        "required": ["success", "sql"],
+        "title": "ExecuteResponse",
+        "description": "SQL 执行响应。"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": { "$ref": "#/components/schemas/ValidationError" },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "整体状态: healthy / unhealthy"
+          },
+          "database": {
+            "type": "boolean",
+            "title": "Database",
+            "description": "数据库连接状态"
+          },
+          "llm": {
+            "type": "boolean",
+            "title": "Llm",
+            "description": "LLM 连接状态"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "应用版本"
+          }
+        },
+        "type": "object",
+        "required": ["status", "database", "llm", "version"],
+        "title": "HealthResponse",
+        "description": "健康检查响应。"
+      },
+      "QueryRequest": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Question",
+            "description": "自然语言问题，例如：查询销售额最高的10个产品",
+            "examples": ["显示所有表", "查询过去30天注册的用户数量"]
+          }
+        },
+        "type": "object",
+        "required": ["question"],
+        "title": "QueryRequest",
+        "description": "自然语言查询请求。"
+      },
+      "QueryResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success",
+            "description": "查询是否成功"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question",
+            "description": "原始问题"
+          },
+          "sql": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Sql",
+            "description": "生成的 SQL 语句"
+          },
+          "data": {
+            "anyOf": [{ "type": "object" }, { "type": "null" }],
+            "title": "Data",
+            "description": "查询结果数据"
+          },
+          "answer": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Answer",
+            "description": "AI 分析回答"
+          },
+          "error": {
+            "anyOf": [{ "type": "string" }, { "type": "null" }],
+            "title": "Error",
+            "description": "错误信息（如有）"
+          }
+        },
+        "type": "object",
+        "required": ["success", "question"],
+        "title": "QueryResponse",
+        "description": "自然语言查询响应。"
+      },
+      "SchemaResponse": {
+        "properties": {
+          "database": {
+            "type": "string",
+            "title": "Database",
+            "description": "数据库名称"
+          },
+          "tables": {
+            "items": { "type": "object" },
+            "type": "array",
+            "title": "Tables",
+            "description": "表结构列表"
+          }
+        },
+        "type": "object",
+        "required": ["database", "tables"],
+        "title": "SchemaResponse",
+        "description": "数据库结构响应。"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": { "anyOf": [{ "type": "string" }, { "type": "integer" }] },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": { "type": "string", "title": "Message" },
+          "type": { "type": "string", "title": "Error Type" }
+        },
+        "type": "object",
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
