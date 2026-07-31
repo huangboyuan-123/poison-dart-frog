@@ -35,13 +35,24 @@ class MySQLConfig:
 
 @dataclass
 class LLMConfig:
-    """LLM API 配置（OpenAI 兼容接口）。"""
+    """LLM API 配置（OpenAI 兼容接口，默认使用 DeepSeek）。
 
-    api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
-    base_url: str = field(
-        default_factory=lambda: os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    支持所有 OpenAI 兼容的 API 提供商：DeepSeek、OpenAI、Ollama 等。
+    API Key 优先级: DEEPSEEK_API_KEY > OPENAI_API_KEY
+    """
+
+    api_key: str = field(
+        default_factory=lambda: os.getenv("DEEPSEEK_API_KEY")
+        or os.getenv("OPENAI_API_KEY", "")
     )
-    model: str = field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-4o"))
+    base_url: str = field(
+        default_factory=lambda: os.getenv(
+            "LLM_BASE_URL", "https://api.deepseek.com/v1"
+        )
+    )
+    model: str = field(
+        default_factory=lambda: os.getenv("LLM_MODEL", "deepseek-chat")
+    )
 
 
 @dataclass
