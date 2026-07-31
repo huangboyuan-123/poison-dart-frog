@@ -6,57 +6,39 @@ import ResultTable from '../components/ResultTable.vue'
 import AnswerPanel from '../components/AnswerPanel.vue'
 import { queryDatabase, type QueryResponse } from '../api'
 
-const queryInputRef = ref<InstanceType<typeof QueryInput> | null>(null)
-
 const sql = ref<string | null>(null)
 const data = ref<Record<string, unknown> | null>(null)
 const answer = ref<string | null>(null)
 const error = ref<string | null>(null)
 
 async function handleSubmit(question: string) {
-  // 清空之前的结果
-  sql.value = null
-  data.value = null
-  answer.value = null
-  error.value = null
-
+  sql.value = null; data.value = null; answer.value = null; error.value = null
   try {
     const res = await queryDatabase(question)
     const r: QueryResponse = res.data
-
     sql.value = r.sql ?? null
     data.value = r.data ?? null
     answer.value = r.answer ?? null
     error.value = r.error ?? null
-
-    if (!r.success && !r.error) {
-      error.value = '查询失败，请检查后端日志'
-    }
+    if (!r.success && !r.error) error.value = '查询失败'
   } catch (e: any) {
-    error.value = e?.response?.data?.detail ?? e?.message ?? '网络请求失败，请确认 API 服务是否已启动'
+    error.value = e?.response?.data?.detail ?? e?.message ?? '网络请求失败'
   }
 }
 </script>
 
 <template>
   <div class="home-view">
-    <div class="main-content">
-      <!-- 输入区 -->
-      <QueryInput ref="queryInputRef" @submit="handleSubmit" />
-
-      <!-- 结果区 -->
-      <div class="results-area">
-        <!-- 等待状态 -->
-        <div v-if="!sql && !answer && !error" class="empty-state">
-          <div class="empty-icon">◆</div>
-          <p class="empty-title">SQLAgent Desktop</p>
-          <p class="empty-desc">输入自然语言问题，AI 将为你生成 SQL 并查询数据库</p>
-        </div>
-
-        <SqlDisplay :sql="sql" />
-        <ResultTable :data="data" />
-        <AnswerPanel :answer="answer" :error="error" />
+    <QueryInput @submit="handleSubmit" />
+    <div class="results-area">
+      <div v-if="!sql && !answer && !error" class="empty-state">
+        <span class="empty-icon">◆</span>
+        <p class="empty-title">SQLAgent Desktop</p>
+        <p class="empty-desc">输入自然语言问题，AI 将生成 SQL 并查询数据库</p>
       </div>
+      <SqlDisplay :sql="sql" />
+      <ResultTable :data="data" />
+      <AnswerPanel :answer="answer" :error="error" />
     </div>
   </div>
 </template>
@@ -65,48 +47,34 @@ async function handleSubmit(question: string) {
 .home-view {
   flex: 1;
   display: flex;
-  overflow: hidden;
-}
-.main-content {
-  flex: 1;
-  display: flex;
   flex-direction: column;
-  padding: 16px 20px;
-  overflow: hidden;
+  min-height: 0;
+  padding: 12px 16px;
 }
 .results-area {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding-right: 4px;
+  padding-right: 2px;
 }
-
-/* 空状态 */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
-  min-height: 300px;
   color: var(--text-muted);
+  padding-top: 60px;
 }
 .empty-icon {
-  font-size: 48px;
+  font-size: 40px;
   background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  margin-bottom: 16px;
-  opacity: 0.6;
+  opacity: 0.5;
+  margin-bottom: 12px;
 }
-.empty-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-}
-.empty-desc {
-  font-size: 13px;
-  color: var(--text-muted);
-}
+.empty-title { font-size: 18px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+.empty-desc { font-size: 13px; }
 </style>

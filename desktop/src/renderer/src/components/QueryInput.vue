@@ -11,14 +11,10 @@ async function onSubmit() {
   if (!q || loading.value) return
   loading.value = true
   try {
-    await emit('submit', q)
+    emit('submit', q)
   } finally {
     loading.value = false
   }
-}
-
-function onClear() {
-  question.value = ''
 }
 
 defineExpose({ setLoading: (v: boolean) => { loading.value = v } })
@@ -29,11 +25,10 @@ defineExpose({ setLoading: (v: boolean) => { loading.value = v } })
     <div class="input-row">
       <el-input
         v-model="question"
-        size="large"
+        size="default"
         placeholder="输入自然语言问题，例如：查询过去30天销售额最高的10个产品"
         :disabled="loading"
         clearable
-        @clear="onClear"
         @keyup.enter="onSubmit"
       >
         <template #prefix>
@@ -42,12 +37,11 @@ defineExpose({ setLoading: (v: boolean) => { loading.value = v } })
       </el-input>
       <el-button
         type="primary"
-        size="large"
         :loading="loading"
         :disabled="!question.trim()"
         @click="onSubmit"
       >
-        {{ loading ? '查询中...' : '发送' }}
+        {{ loading ? '查询中' : '发送' }}
       </el-button>
     </div>
   </div>
@@ -55,17 +49,24 @@ defineExpose({ setLoading: (v: boolean) => { loading.value = v } })
 
 <style scoped>
 .query-input-wrap {
-  margin-bottom: 12px;
+  flex-shrink: 0;
+  padding-bottom: 10px;
 }
 .input-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  align-items: center;
 }
 .input-row :deep(.el-input) {
   flex: 1;
 }
+.input-row :deep(.el-button) {
+  height: 32px;
+  padding: 0 16px;
+  font-size: 13px;
+}
 .input-icon {
   color: var(--accent-purple);
-  font-size: 18px;
+  font-size: 16px;
 }
 </style>
