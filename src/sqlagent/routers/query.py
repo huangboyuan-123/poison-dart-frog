@@ -2,6 +2,8 @@
 查询路由 — 自然语言转 SQL 并执行。
 """
 
+from __future__ import annotations
+
 import re
 from typing import Any
 

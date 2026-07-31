@@ -4,6 +4,8 @@ LangChain AI Agent 核心模块。
 封装 LLM + Tools + AgentExecutor，提供统一的查询接口。
 """
 
+from __future__ import annotations
+
 from collections.abc import Iterator
 from typing import Any
 

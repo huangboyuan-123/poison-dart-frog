@@ -2,6 +2,8 @@
 MySQL 数据库管理器 — 连接管理、Schema 获取、SQL 执行。
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 from sqlalchemy import Engine, create_engine, text

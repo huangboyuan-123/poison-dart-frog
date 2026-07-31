@@ -2,6 +2,8 @@
 Schema 路由 — 获取数据库表结构信息。
 """
 
+from __future__ import annotations
+
 from fastapi import APIRouter, HTTPException
 
 from ..agent import SQLAgent
