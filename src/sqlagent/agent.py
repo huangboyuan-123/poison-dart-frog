@@ -1,14 +1,15 @@
 """
-AI Agent 核心模块 — 创建和管理 LLM 驱动的 SQL Agent。
+LangChain AI Agent 核心模块。
+
+封装 LLM + Tools + AgentExecutor，提供统一的查询接口。
 """
 
-from typing import Any, AsyncIterator, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.memory import ConversationBufferMemory
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from rich.console import Console
 
@@ -21,12 +22,12 @@ console = Console()
 
 
 class SQLAgent:
-    """AI SQL Agent — 自然语言到 SQL 的智能代理。
+    """AI SQL Agent — 将自然语言转为 MySQL 查询并执行。
 
     使用方式:
         agent = SQLAgent()
         result = agent.run("查询销售额最高的10个产品")
-        print(result)
+        # result = {"output": "...", "sql": "SELECT ...", "data": {...}}
     """
 
     def __init__(
@@ -37,30 +38,27 @@ class SQLAgent:
         base_url: str | None = None,
         read_only: bool = True,
     ):
-        """
-        初始化 SQLAgent。
-
-        Args:
-            database_url: 数据库连接 URL，默认使用 .env 中的配置
-            model: LLM 模型名称，默认使用 .env 中的配置
-            api_key: API Key，默认使用 .env 中的配置
-            base_url: API Base URL，默认使用 .env 中的配置
-            read_only: 是否只读模式
-        """
-        self.database_url = database_url or config.database.url
+        self.database_url = database_url or config.mysql.url
         self.model = model or config.llm.model
         self.api_key = api_key or config.llm.api_key
         self.base_url = base_url or config.llm.base_url
         self.read_only = read_only
 
-        # 初始化组件
-        self._db_manager = DatabaseManager(self.database_url)
+        # 初始化数据库和 LLM
+        self._db = DatabaseManager(self.database_url)
         self._llm = self._create_llm()
-        self._tools = create_tools(self._db_manager)
-        self._agent_executor = self._create_agent()
+        self._tools = create_tools(self._db)
+        self._executor = self._create_executor()
 
-    def _create_llm(self) -> BaseChatModel:
-        """创建 LLM 实例。"""
+    @property
+    def db(self) -> DatabaseManager:
+        """数据库管理器。"""
+        return self._db
+
+    # ── LLM ────────────────────────────────────────────
+
+    def _create_llm(self) -> ChatOpenAI:
+        """创建 OpenAI 兼容的 LLM 实例。"""
         return ChatOpenAI(
             model=self.model,
             api_key=self.api_key,
@@ -69,16 +67,16 @@ class SQLAgent:
             streaming=True,
         )
 
-    def _create_agent(self) -> AgentExecutor:
+    # ── Agent Executor ─────────────────────────────────
+
+    def _create_executor(self) -> AgentExecutor:
         """创建 LangChain Agent 执行器。"""
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", SQL_AGENT_SYSTEM_PROMPT),
-                MessagesPlaceholder(variable_name="chat_history", optional=True),
-                ("human", "{input}"),
-                MessagesPlaceholder(variable_name="agent_scratchpad"),
-            ]
-        )
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", SQL_AGENT_SYSTEM_PROMPT),
+            MessagesPlaceholder(variable_name="chat_history", optional=True),
+            ("human", "{input}"),
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
+        ])
 
         agent = create_tool_calling_agent(self._llm, self._tools, prompt)
 
@@ -93,72 +91,71 @@ class SQLAgent:
             memory=memory,
             verbose=config.log_level == "DEBUG",
             handle_parsing_errors=True,
-            max_iterations=10,
+            max_iterations=15,
         )
 
-    def run(self, question: str) -> str:
+    # ── 查询接口 ───────────────────────────────────────
+
+    def run(self, question: str) -> dict[str, Any]:
         """执行自然语言查询。
 
         Args:
             question: 用户的自然语言问题
 
         Returns:
-            Agent 的回答文本
+            {"output": str, "intermediate_steps": [...]}
         """
         try:
-            result = self._agent_executor.invoke({"input": question})
-            return result.get("output", "未能获取回答。")
+            result = self._executor.invoke({"input": question})
+            return {
+                "success": True,
+                "output": result.get("output", ""),
+                "intermediate_steps": result.get("intermediate_steps", []),
+            }
         except Exception as e:
-            return f"执行出错: {e}"
+            console.print(f"[red]Agent 执行错误: {e}[/red]")
+            return {
+                "success": False,
+                "output": f"执行出错: {e}",
+                "error": str(e),
+            }
 
     def stream(self, question: str) -> Iterator[dict[str, Any]]:
-        """流式执行查询，返回中间步骤。
+        """流式执行查询。
 
         Args:
-            question: 用户的自然语言问题
+            question: 用户问题
 
         Yields:
-            每个中间步骤的结果字典
+            每个步骤的事件字典
         """
         try:
-            for event in self._agent_executor.stream({"input": question}):
+            for event in self._executor.stream({"input": question}):
                 yield event
         except Exception as e:
             yield {"error": str(e)}
 
-    def chat(self, message: str, history: list[dict] | None = None) -> str:
-        """多轮对话模式。
-
-        Args:
-            message: 用户消息
-            history: 历史对话记录 [{"role": "user/assistant", "content": "..."}]
-
-        Returns:
-            Agent 的回复
-        """
-        return self.run(message)
-
     def clear_memory(self) -> None:
-        """清除 Agent 的对话记忆。"""
-        self._agent_executor.memory.clear()
+        """清除对话记忆。"""
+        memory = self._executor.memory
+        if memory:
+            memory.clear()
 
-    @property
-    def db(self) -> DatabaseManager:
-        """获取数据库管理器。"""
-        return self._db_manager
+    # ── 诊断 ───────────────────────────────────────────
 
-    def test_connection(self) -> dict[str, Any]:
-        """测试所有连接是否正常。"""
-        results = {
-            "database": self._db_manager.test_connection(),
+    def test_connections(self) -> dict[str, Any]:
+        """测试数据库和 LLM 连接状态。"""
+        results: dict[str, Any] = {
+            "database": self._db.test_connection(),
             "llm": False,
         }
 
-        # 测试 LLM 连接
         try:
-            response = self._llm.invoke([HumanMessage(content="Hi")])
-            results["llm"] = bool(response.content)
+            from langchain_core.messages import HumanMessage
+            resp = self._llm.invoke([HumanMessage(content="Hi")])
+            results["llm"] = bool(resp.content)
         except Exception:
-            results["llm"] = False
+            pass
 
+        results["status"] = "healthy" if all(results.values()) else "unhealthy"
         return results

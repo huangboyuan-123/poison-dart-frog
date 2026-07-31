@@ -4,48 +4,72 @@
 
 ## 项目概述
 
-sqlagent 是一个基于 LangChain + LLM（OpenAI 兼容接口）的 Python AI Agent，将自然语言转换为 SQL 查询并执行，返回智能分析结果。
+sqlagent 是一个 **FastAPI REST API + LangChain Agent + MySQL** 架构的 AI 数据库操控系统。
+通过 HTTP API 将自然语言转换为 SQL 查询并执行，部署在 Docker 容器中。
 
-## 构建、测试和开发命令
+## 构建、测试、开发命令
 
-- **安装开发依赖**: `pip install -e ".[dev]"`
+- **Docker 部署**: `docker compose up -d`
+- **Docker 构建**: `docker compose build`
+- **Docker 停止**: `docker compose down`
+- **本地开发启动**: `uvicorn sqlagent.main:app --host 0.0.0.0 --port 8000 --reload`
+- **安装依赖**: `pip install -e ".[dev]"`
 - **运行测试**: `pytest`
-- **单个测试**: `pytest tests/test_agent.py::TestDatabaseManager::test_execute_select`
+- **单个测试**: `pytest tests/test_api.py::test_health_check`
 - **覆盖率测试**: `pytest --cov=sqlagent --cov-report=term-missing`
 - **代码检查**: `ruff check src/ tests/`
 - **类型检查**: `mypy src/`
-- **启动 CLI**: `python -m sqlagent`
-- **单次查询**: `python -m sqlagent query "查询所有用户"`
-- **查看 Schema**: `python -m sqlagent schema`
-- **测试连接**: `python -m sqlagent test`
+- **API 文档**: 启动后访问 `http://localhost:8000/docs`
+- **启动 MySQL（仅数据库）**: `docker compose up -d mysql`
 
 ## 架构
 
 ```
+API 层 (FastAPI)
+┌─────────────────────────────────────────────┐
+│ main.py ← routers/health.py, query.py, schema.py │
+│   ↕                                         │
+│ Agent 层 (LangChain)                         │
+│ agent.py → tools.py (4 tools)               │
+│   ↕                                         │
+│ 数据层 (SQLAlchemy + PyMySQL)                │
+│ database.py → MySQL 8.0                     │
+└─────────────────────────────────────────────┘
+```
+
+```
 src/sqlagent/
-├── __init__.py       # 版本号
-├── __main__.py       # CLI 入口 (argparse, 交互式/单次查询/schema/test)
-├── agent.py          # 核心 Agent: 创建 LLM, tools, LangChain AgentExecutor
-├── config.py         # 配置管理: pydantic dataclass + python-dotenv
-├── database.py       # 数据库管理器: 连接, Schema获取, SQL执行, 安全检查
-├── prompts.py        # 系统提示词模板
-└── tools.py          # LangChain 工具: list_tables, get_table_schema, execute_query, validate_sql
+├── main.py           # FastAPI app, CORS, lifespan, 路由注册
+├── models.py         # Pydantic 模型: QueryRequest/Response, HealthResponse 等
+├── config.py         # 配置 dataclass: MySQLConfig, LLMConfig, AppConfig
+├── database.py       # DatabaseManager: get_schema(), execute_sql(), validate_sql()
+├── agent.py          # SQLAgent: run(), stream(), clear_memory(), test_connections()
+├── tools.py          # create_tools(db) → [list_tables, get_table_schema, execute_query, validate_sql]
+├── prompts.py        # SQL_AGENT_SYSTEM_PROMPT (MySQL 特化)
+└── routers/
+    ├── health.py     # GET /api/health
+    ├── query.py      # POST /api/query, POST /api/execute, GET /api/history
+    └── schema.py     # GET /api/schema, GET /api/schema/{table}
 ```
 
 ## 代码规范
 
-- 遵循 PEP 8，ruff 强制执行
-- 所有公共函数使用类型标注
-- 配置通过环境变量 / .env 文件，敏感信息不硬编码
-- LangChain 模式: 使用 `@tool` 装饰器定义工具
-- 工具返回字符串（LangChain 约定，错误也返回字符串）
-- CLI 使用 Rich 库输出美观的终端界面
-- 默认只读模式 — 写操作需用户明确确认
+- Python >= 3.10, FastAPI 0.115+, LangChain 0.3+
+- 类型标注: 所有函数参数和返回值使用 type hints
+- 配置: 通过环境变量 / .env 文件，敏感信息不硬编码
+- 工具函数: 使用工厂模式 `create_tools(db)` 而非全局变量（避免并发问题）
+- 数据库: MySQL only，使用 `information_schema` 获取 Schema
+- 安全: 默认只读模式，`_is_read_only()` 检查 SQL 关键字
+- Docker: `python:3.11-slim` + `mysql:8.0`，docker-compose 编排
 
 ## 关键依赖
 
-- **langchain** + **langchain-openai**: Agent 框架和 LLM 集成
-- **sqlalchemy**: 数据库抽象层
-- **pydantic** + **python-dotenv**: 配置和数据模型
-- **rich**: 终端格式化输出
-- **click**: CLI 框架（备用）
+| 包 | 版本 | 用途 |
+|---|---|---|
+| fastapi | 0.115.x | Web 框架 |
+| uvicorn | 0.34.x | ASGI 服务器 |
+| langchain | 0.3.x | Agent 框架 |
+| langchain-openai | 0.2.x | LLM 接口 |
+| sqlalchemy | 2.0.x | 数据库抽象 |
+| pymysql | 1.1.x | MySQL 驱动 |
+| pydantic | 2.10.x | 数据校验 |

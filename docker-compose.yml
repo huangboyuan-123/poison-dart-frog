@@ -1,0 +1,68 @@
+# ── SQLAgent Docker Compose 编排 ──
+# 启动: docker compose up -d
+# 停止: docker compose down
+# 查看日志: docker compose logs -f api
+
+version: "3.8"
+
+services:
+  # ── FastAPI API 服务 ──────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sqlagent-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Docker 内通过服务名访问 MySQL
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      # 开发模式：挂载源代码实现热更新（需配合 uvicorn --reload）
+      - ./src:/app/src
+    restart: unless-stopped
+    networks:
+      - sqlagent-net
+
+  # ── MySQL 8.0 数据库 ──────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: sqlagent-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-root123}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-sqlagent}
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # 初始化脚本（首次启动时执行）
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_PASSWORD:-root123}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - sqlagent-net
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  sqlagent-net:
+    driver: bridge
