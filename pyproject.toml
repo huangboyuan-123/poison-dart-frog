@@ -8,7 +8,7 @@ version = "0.2.0"
 description = "AI-powered SQL Agent API — FastAPI + LangChain + MySQL 数据库智能操控系统"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 authors = [
     {name = "会飞的程序源", email = "1624058291@qq.com"},
 ]
@@ -29,8 +29,8 @@ classifiers = [
 dependencies = [
     "fastapi>=0.115,<0.116",
     "uvicorn[standard]>=0.34,<0.35",
-    "langchain>=0.3,<0.4",
-    "langchain-openai>=0.2,<0.3",
+    "langchain>=0.2,<0.4",
+    "langchain-openai>=0.1,<0.3",
     "sqlalchemy>=2.0,<3.0",
     "pydantic>=2.10,<2.11",
     "python-dotenv>=1.0,<2.0",
