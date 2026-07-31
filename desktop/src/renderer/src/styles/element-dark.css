@@ -116,6 +116,13 @@
   color: var(--accent-purple) !important;
 }
 
+/* ── 图标 ── */
+.el-icon {
+  font-size: inherit !important;
+  width: auto !important;
+  height: auto !important;
+}
+
 /* ── 消息提示 ── */
 .el-message {
   background: var(--bg-secondary) !important;

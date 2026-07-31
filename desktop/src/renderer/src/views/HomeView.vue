@@ -67,12 +67,13 @@ async function handleSubmit(question: string) {
   padding-top: 60px;
 }
 .empty-icon {
-  font-size: 40px;
+  font-size: 32px;
+  line-height: 1;
   background: var(--gradient-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  opacity: 0.5;
+  opacity: 0.4;
   margin-bottom: 12px;
 }
 .empty-title { font-size: 18px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
