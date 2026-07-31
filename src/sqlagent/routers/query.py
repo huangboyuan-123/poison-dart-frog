@@ -2,10 +2,8 @@
 查询路由 — 自然语言转 SQL 并执行。
 """
 
-from __future__ import annotations
-
 import re
-from typing import Any
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter
 
@@ -15,7 +13,7 @@ from ..models import ExecuteRequest, ExecuteResponse, QueryRequest, QueryRespons
 router = APIRouter(prefix="/api", tags=["query"])
 
 # 全局 Agent 单例（模块加载时创建）
-_agent: SQLAgent | None = None
+_agent: Optional[SQLAgent] = None
 
 
 def get_agent() -> SQLAgent:
@@ -26,7 +24,7 @@ def get_agent() -> SQLAgent:
     return _agent
 
 
-def _extract_sql(output: str) -> str | None:
+def _extract_sql(output: str) -> Optional[str]:
     """
     从 Agent 输出中提取 SQL 语句。
 
@@ -103,7 +101,7 @@ async def execute_sql(req: ExecuteRequest):
     )
 
 
-@router.get("/history", response_model=dict[str, Any])
+@router.get("/history", response_model=Dict[str, Any])
 async def query_history():
     """
     查询历史记录（当前会话）。

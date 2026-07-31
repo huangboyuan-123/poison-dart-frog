@@ -2,7 +2,7 @@
 Schema 路由 — 获取数据库表结构信息。
 """
 
-from __future__ import annotations
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
@@ -12,7 +12,7 @@ from ..models import SchemaResponse
 router = APIRouter(prefix="/api", tags=["schema"])
 
 # 复用 query 模块的 agent 单例（同一进程共享）
-_agent: SQLAgent | None = None
+_agent: Optional[SQLAgent] = None
 
 
 def get_agent() -> SQLAgent:

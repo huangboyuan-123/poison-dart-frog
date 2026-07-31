@@ -2,9 +2,7 @@
 MySQL 数据库管理器 — 连接管理、Schema 获取、SQL 执行。
 """
 
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
@@ -24,7 +22,7 @@ class DatabaseManager:
         result = db.execute_sql("SELECT * FROM users LIMIT 5")
     """
 
-    def __init__(self, database_url: str | None = None):
+    def __init__(self, database_url: Optional[str] = None):
         """
         初始化数据库管理器。
 
@@ -46,7 +44,7 @@ class DatabaseManager:
     def engine(self) -> Engine:
         return self._engine
 
-    def get_schema(self) -> list[dict[str, Any]]:
+    def get_schema(self) -> List[Dict[str, Any]]:
         """
         获取当前数据库所有用户表的完整结构信息。
 
@@ -80,7 +78,7 @@ class DatabaseManager:
                 rows = conn.execute(col_query, {"db": db_name}).fetchall()
 
             # 按表名分组整理
-            tables: dict[str, list[dict]] = {}
+            tables: Dict[str, List[dict]] = {}
             for row in rows:
                 table_name = row.TABLE_NAME
                 if table_name not in tables:
@@ -103,7 +101,7 @@ class DatabaseManager:
         except SQLAlchemyError as e:
             raise RuntimeError(f"获取数据库 Schema 失败: {e}") from e
 
-    def get_table_info(self, table_name: str) -> dict[str, Any] | None:
+    def get_table_info(self, table_name: str) -> Optional[Dict[str, Any]]:
         """
         获取指定表的详细结构。
 
@@ -155,7 +153,7 @@ class DatabaseManager:
 
         return "\n".join(lines)
 
-    def execute_sql(self, sql: str, read_only: bool = True) -> dict[str, Any]:
+    def execute_sql(self, sql: str, read_only: bool = True) -> Dict[str, Any]:
         """
         执行 SQL 语句并返回结构化结果。
 
@@ -209,7 +207,7 @@ class DatabaseManager:
         except SQLAlchemyError as e:
             return {"success": False, "error": str(e), "data": None}
 
-    def validate_sql(self, sql: str) -> dict[str, Any]:
+    def validate_sql(self, sql: str) -> Dict[str, Any]:
         """
         验证 SQL 语法（使用 EXPLAIN 而不实际执行）。
 

@@ -4,10 +4,8 @@ LangChain AI Agent 核心模块。
 封装 LLM + Tools + AgentExecutor，提供统一的查询接口。
 """
 
-from __future__ import annotations
-
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, Dict, Optional
 
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.memory import ConversationBufferMemory
@@ -34,10 +32,10 @@ class SQLAgent:
 
     def __init__(
         self,
-        database_url: str | None = None,
-        model: str | None = None,
-        api_key: str | None = None,
-        base_url: str | None = None,
+        database_url: Optional[str] = None,
+        model: Optional[str] = None,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
         read_only: bool = True,
     ):
         self.database_url = database_url or config.mysql.url
@@ -98,7 +96,7 @@ class SQLAgent:
 
     # ── 查询接口 ───────────────────────────────────────
 
-    def run(self, question: str) -> dict[str, Any]:
+    def run(self, question: str) -> Dict[str, Any]:
         """执行自然语言查询。
 
         Args:
@@ -122,7 +120,7 @@ class SQLAgent:
                 "error": str(e),
             }
 
-    def stream(self, question: str) -> Iterator[dict[str, Any]]:
+    def stream(self, question: str) -> Iterator[Dict[str, Any]]:
         """流式执行查询。
 
         Args:
@@ -145,9 +143,9 @@ class SQLAgent:
 
     # ── 诊断 ───────────────────────────────────────────
 
-    def test_connections(self) -> dict[str, Any]:
+    def test_connections(self) -> Dict[str, Any]:
         """测试数据库和 LLM 连接状态。"""
-        results: dict[str, Any] = {
+        results: Dict[str, Any] = {
             "database": self._db.test_connection(),
             "llm": False,
         }
