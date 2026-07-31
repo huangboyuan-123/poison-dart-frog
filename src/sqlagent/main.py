@@ -17,8 +17,21 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from rich.console import Console
 
-from . import __version__
-from .routers import health, query, schema
+# 兼容直接运行 (python main.py) 和模块运行 (python -m sqlagent.main)
+try:
+    from . import __version__
+    from .routers import health, query, schema
+except ImportError:
+    import sys
+    from pathlib import Path
+
+    _src = Path(__file__).resolve().parent.parent
+    sys.path.insert(0, str(_src))
+
+    import sqlagent  # type: ignore
+    from sqlagent.routers import health, query, schema  # type: ignore
+
+    __version__ = sqlagent.__version__
 
 console = Console()
 
@@ -33,6 +46,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # 预热：创建 Agent 实例
     try:
         from .agent import SQLAgent
+    except ImportError:
+        from sqlagent.agent import SQLAgent  # type: ignore
         agent = SQLAgent()
         db_ok = agent.db.test_connection()
         if db_ok:
