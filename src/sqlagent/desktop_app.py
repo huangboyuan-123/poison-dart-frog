@@ -11,6 +11,7 @@ import tkinter as tk
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, scrolledtext, ttk
+from typing import Any, Dict, List, Optional
 
 import requests
 
@@ -38,8 +39,8 @@ DANGER_KW = ['DROP TABLE', 'DROP DATABASE', 'TRUNCATE', 'DELETE FROM']
 # ═══════════════════════════════════════════
 # 数据库配置存储
 # ═══════════════════════════════════════════
-DB_CONFIGS: list[dict] = []
-CURRENT_DB: dict | None = None
+DB_CONFIGS: List[Dict[str, Any]] = []
+CURRENT_DB: Optional[Dict[str, Any]] = None
 
 DB_CONFIG_FILE = Path(__file__).parent.parent.parent / '.db_configs.json'
 
