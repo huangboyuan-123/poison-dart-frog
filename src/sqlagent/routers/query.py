@@ -70,6 +70,23 @@ async def natural_language_query(req: QueryRequest):
     output = result.get("output", "")
     sql = _extract_sql(output)
 
+    # 如果输出中没有提取到 SQL，尝试从 Agent 的中间步骤中提取
+    if not sql:
+        for step in result.get("intermediate_steps", []):
+            # step 是 (action, observation) 元组
+            action = step[0] if step else None
+            if action and hasattr(action, 'tool_input'):
+                tool_input = action.tool_input
+                if isinstance(tool_input, dict) and 'sql' in tool_input:
+                    sql = tool_input['sql']
+                    break
+                elif isinstance(tool_input, str):
+                    # 检查是否是有效的 SQL
+                    if re.match(r'^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|SHOW|DESCRIBE|EXPLAIN)\b',
+                                tool_input, re.I):
+                        sql = tool_input
+                        break
+
     return QueryResponse(
         success=True,
         question=req.question,

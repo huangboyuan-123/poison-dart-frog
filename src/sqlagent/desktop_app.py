@@ -549,13 +549,23 @@ class MainWindow(QMainWindow):
         def callback(resp):
             self.gen_btn.setText('生成 SQL')
             self.gen_btn.setEnabled(True)
-            sql = resp.get('sql', '')
-            if resp.get('error'):
-                sql = f"-- 生成失败: {resp['error']}"
-            elif not sql:
-                sql = resp.get('answer', '-- 未生成 SQL')
-            self.sql_text.setPlainText(sql)
-            self._append_log(f"[生成SQL] {question}\n{sql}\n")
+            sql = resp.get('sql', '') or ''
+            error = resp.get('error', '') or ''
+            answer = resp.get('answer', '') or ''
+
+            if error:
+                self.sql_text.setPlainText(f'-- 生成失败: {error}')
+                self._show_log(f'✗ 生成失败\n{error}')
+                self.tabs.setCurrentIndex(1)
+            elif sql and sql.strip():
+                # 有提取到的 SQL — 放进预览框
+                self.sql_text.setPlainText(sql)
+                self._append_log(f'[生成SQL] {question}\n{sql}\n')
+            else:
+                # 没有 SQL — 只显示 AI 分析在日志区，预览框置灰提示
+                self.sql_text.setPlainText('-- AI 未生成 SQL 语句，请查看「执行日志」Tab 中的分析')
+                self._show_log(f'🤖 AI 分析 (未生成SQL)\n{"─"*50}\n{answer}')
+                self.tabs.setCurrentIndex(1)
 
         self._run_async(do_generate, callback)
 
