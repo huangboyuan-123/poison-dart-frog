@@ -14,8 +14,8 @@ import requests
 from PySide6.QtCore import (Qt, QThread, Signal, QRect, QRegularExpression)
 from PySide6.QtGui import (QAction, QColor, QFont, QFontDatabase,
                             QKeySequence, QSyntaxHighlighter,
-                            QTextCharFormat, QPalette, QIcon)
-from PySide6.QtWidgets import (QAction, QApplication, QCheckBox, QComboBox,
+                            QTextCharFormat, QPalette, QIcon, QAction)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox,
                                 QDialog, QDialogButtonBox, QFileDialog,
                                 QFormLayout, QHBoxLayout, QHeaderView, QLabel,
                                 QLineEdit, QMainWindow, QMenu, QMessageBox,
@@ -595,7 +595,6 @@ class MainWindow(QMainWindow):
 
         menu = self.schema_tree.parent().createStandardContextMenu() if False else None  # placeholder
 
-        from PySide6.QtWidgets import QMenu
         menu = QMenu(self)
 
         # 查看表结构
