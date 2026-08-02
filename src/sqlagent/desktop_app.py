@@ -435,10 +435,15 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(6, 8, 2, 4)
         layout.setSpacing(6)
 
-        # DB 连接指示
+        # DB 连接管理
         hdr = QHBoxLayout()
         hdr.addWidget(QLabel('📊 数据库'))
         hdr.addStretch()
+        add_conn_btn = QPushButton('+')
+        add_conn_btn.setFixedSize(22, 22)
+        add_conn_btn.setToolTip('新增数据库连接')
+        add_conn_btn.clicked.connect(self._add_db_dialog)
+        hdr.addWidget(add_conn_btn)
         refresh_btn = QPushButton('↻')
         refresh_btn.setFixedSize(22, 22)
         refresh_btn.setToolTip('刷新结构')
@@ -460,6 +465,20 @@ class MainWindow(QMainWindow):
         self.tree_label.setStyleSheet(f'color: {MUTED}; font-size: 10px;')
         self.tree_label.setWordWrap(True)
         layout.addWidget(self.tree_label)
+
+        # 连接切换
+        conn_row = QHBoxLayout()
+        self.sidebar_combo = QComboBox()
+        self.sidebar_combo.setMinimumHeight(24)
+        self.sidebar_combo.setToolTip('切换数据库连接')
+        self.sidebar_combo.currentIndexChanged.connect(self._on_sidebar_db_select)
+        conn_row.addWidget(self.sidebar_combo, 1)
+        manage_btn = QPushButton('⚙')
+        manage_btn.setFixedSize(22, 22)
+        manage_btn.setToolTip('管理连接')
+        manage_btn.clicked.connect(self._add_db_dialog)
+        conn_row.addWidget(manage_btn)
+        layout.addLayout(conn_row)
 
     def _build_right(self, parent: QWidget):
         layout = QVBoxLayout(parent)
@@ -528,14 +547,25 @@ class MainWindow(QMainWindow):
 
     def _refresh_db_combo(self):
         self.db_combo.clear()
+        self.sidebar_combo.clear()
         for c in _db_configs:
-            self.db_combo.addItem(f"{c['name']} ({c['type']})", c)
+            label = f"{c['name']} ({c['type']})"
+            self.db_combo.addItem(label, c)
+            self.sidebar_combo.addItem(label, c)
         if _db_configs:
             self._current_db = _db_configs[0]
+            self.sidebar_combo.setCurrentIndex(0)
 
     def _on_db_select(self, idx):
         if 0 <= idx < len(_db_configs):
             self._current_db = _db_configs[idx]
+            self._load_schema_tree()
+
+    def _on_sidebar_db_select(self, idx):
+        """侧边栏连接切换 — 同步到主面板"""
+        if 0 <= idx < len(_db_configs):
+            self._current_db = _db_configs[idx]
+            self.db_combo.setCurrentIndex(idx)
             self._load_schema_tree()
 
     # ── Schema 树 ────────────────────────────
