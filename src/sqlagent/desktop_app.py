@@ -15,15 +15,16 @@ from PySide6.QtCore import (Qt, QThread, Signal, QRect, QRegularExpression)
 from PySide6.QtGui import (QAction, QColor, QFont, QFontDatabase,
                             QKeySequence, QSyntaxHighlighter,
                             QTextCharFormat, QPalette, QIcon)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
-                                QDialogButtonBox, QFileDialog, QFormLayout,
-                                QHBoxLayout, QHeaderView, QLabel, QLineEdit,
-                                QMainWindow, QMessageBox, QPlainTextEdit,
-                                QPushButton, QSplitter, QStatusBar,
+from PySide6.QtWidgets import (QAction, QApplication, QCheckBox, QComboBox,
+                                QDialog, QDialogButtonBox, QFileDialog,
+                                QFormLayout, QHBoxLayout, QHeaderView, QLabel,
+                                QLineEdit, QMainWindow, QMenu, QMessageBox,
+                                QPlainTextEdit, QPushButton, QSizePolicy,
+                                QSpacerItem, QSplitter, QStatusBar, QStyle,
                                 QTabWidget, QTableWidget, QTableWidgetItem,
-                                QTextEdit, QVBoxLayout, QWidget, QListWidget,
-                                QListWidgetItem, QSpacerItem, QSizePolicy,
-                                QGroupBox)
+                                QTextEdit, QTreeWidget, QTreeWidgetItem,
+                                QVBoxLayout, QWidget, QListWidget,
+                                QListWidgetItem, QGroupBox)
 
 # ═══════════════════════════════════════════
 # 配色 & 常量
@@ -103,6 +104,12 @@ QListWidget { background: #272B33; color: #E8E8E8; border: none; outline: none; 
 QListWidget::item { padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
 QListWidget::item:hover { background: #363B44; }
 QListWidget::item:selected { background: #2574FF; }
+QTreeWidget { background: #272B33; color: #E8E8E8; border: none; outline: none; }
+QTreeWidget::item { padding: 3px 4px; }
+QTreeWidget::item:hover { background: #363B44; }
+QTreeWidget::item:selected { background: #2574FF; }
+QTreeWidget::branch:has-children:!has-siblings:closed,
+QTreeWidget::branch:closed:has-children:has-siblings { border-image: none; }
 QCheckBox { color: #86909C; spacing: 6px; }
 QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid rgba(255,255,255,0.15); border-radius: 2px; }
 QCheckBox::indicator:checked { background: #2574FF; border-color: #2574FF; }
@@ -355,6 +362,32 @@ class MainWindow(QMainWindow):
         db_bar.addWidget(self.db_status)
         layout.addLayout(db_bar)
 
+        # ── 数据库结构树 ──
+        tree_group = QGroupBox('数据库结构')
+        tree_ly = QVBoxLayout(tree_group)
+        tree_ly.setContentsMargins(0, 0, 0, 0)
+
+        toolbar = QHBoxLayout()
+        self.tree_label = QLabel('')
+        self.tree_label.setStyleSheet(f'color: {GRAY}; font-size: 11px;')
+        toolbar.addWidget(self.tree_label)
+        toolbar.addStretch()
+        refresh_btn = QPushButton('刷新')
+        refresh_btn.setFixedHeight(22)
+        refresh_btn.clicked.connect(self._load_schema_tree)
+        toolbar.addWidget(refresh_btn)
+        tree_ly.addLayout(toolbar)
+
+        self.schema_tree = QTreeWidget()
+        self.schema_tree.setHeaderHidden(True)
+        self.schema_tree.setIndentation(16)
+        self.schema_tree.setMaximumHeight(220)
+        self.schema_tree.itemExpanded.connect(self._on_tree_expand)
+        self.schema_tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.schema_tree.customContextMenuRequested.connect(self._on_tree_menu)
+        tree_ly.addWidget(self.schema_tree)
+        layout.addWidget(tree_group)
+
         # ── 自然语言输入 ──
         nl_group = QGroupBox('自然语言输入')
         nl_ly = QVBoxLayout(nl_group)
@@ -491,6 +524,113 @@ class MainWindow(QMainWindow):
     def _on_db_select(self, idx):
         if 0 <= idx < len(_db_configs):
             self._current_db = _db_configs[idx]
+            self._load_schema_tree()
+
+    # ── Schema 树 ────────────────────────────
+    def _load_schema_tree(self):
+        """加载数据库表结构到树控件"""
+        self.schema_tree.clear()
+        self.tree_label.setText('加载中...')
+
+        def do_fetch():
+            try:
+                r = requests.get(f'{API_BASE}/api/schema', timeout=10)
+                return r.json()
+            except Exception as e:
+                return {'error': str(e)}
+
+        def callback(data):
+            if 'error' in data:
+                self.tree_label.setText('加载失败')
+                return
+
+            db_name = data.get('database', 'unknown')
+            self.tree_label.setText(db_name)
+
+            tables = data.get('tables', [])
+            for t in tables:
+                table_name = t['table']
+                # 创建表节点
+                table_item = QTreeWidgetItem([table_name])
+                table_item.setIcon(0, self.style().standardIcon(
+                    QStyle.SP_DirIcon))  # 用 Qt 内置图标模拟
+                # 添加占位子节点 (用于显示展开箭头)
+                placeholder = QTreeWidgetItem(['...'])
+                table_item.addChild(placeholder)
+                # 存储列信息
+                table_item.setData(0, Qt.UserRole, t.get('columns', []))
+                table_item.setData(0, Qt.UserRole + 1, 'table')
+                self.schema_tree.addTopLevelItem(table_item)
+
+        self._run_async(do_fetch, callback)
+
+    def _on_tree_expand(self, item: QTreeWidgetItem):
+        """展开表节点时懒加载列信息"""
+        if item.data(0, Qt.UserRole + 1) != 'table':
+            return
+        # 移除占位符，加载真实列
+        item.takeChildren()
+        columns = item.data(0, Qt.UserRole) or []
+        for col in columns:
+            key_info = ''
+            if col.get('key') == 'PRI':
+                key_info = ' 🔑'
+            elif col.get('key') == 'MUL':
+                key_info = ' 🔗'
+            null = '?' if col.get('nullable') else ''
+            col_text = f"{col['name']}: {col['type']}{null}{key_info}"
+            col_item = QTreeWidgetItem([col_text])
+            col_item.setData(0, Qt.UserRole + 1, 'column')
+            col_item.setForeground(0, QColor(GRAY))
+            item.addChild(col_item)
+
+    def _on_tree_menu(self, pos):
+        """右键菜单"""
+        item = self.schema_tree.itemAt(pos)
+        if not item or item.data(0, Qt.UserRole + 1) != 'table':
+            return
+
+        table_name = item.text(0)
+        columns = item.data(0, Qt.UserRole) or []
+
+        menu = self.schema_tree.parent().createStandardContextMenu() if False else None  # placeholder
+
+        from PySide6.QtWidgets import QMenu
+        menu = QMenu(self)
+
+        # 查看表结构
+        act_struct = QAction('查看表结构', self)
+        act_struct.triggered.connect(lambda: self._show_table_structure(table_name, columns))
+        menu.addAction(act_struct)
+
+        # 生成 SELECT *
+        act_select = QAction(f'SELECT * FROM {table_name}', self)
+        act_select.triggered.connect(lambda: self.sql_text.setPlainText(
+            f'SELECT * FROM {table_name} LIMIT 100;'))
+        menu.addAction(act_select)
+
+        # 复制表名
+        act_copy = QAction('复制表名', self)
+        act_copy.triggered.connect(lambda: QApplication.clipboard().setText(table_name))
+        menu.addAction(act_copy)
+
+        menu.exec(self.schema_tree.mapToGlobal(pos))
+
+    def _show_table_structure(self, table_name: str, columns: list):
+        """在右侧表格显示表结构"""
+        self._rows = [[c.get('name', ''), c.get('type', ''), c.get('key', ''),
+                       'YES' if c.get('nullable') else 'NO', str(c.get('default', ''))]
+                      for c in columns]
+        self._page = 0
+        self.result_table.setColumnCount(5)
+        self.result_table.setHorizontalHeaderLabels(['字段', '类型', '键', '可空', '默认值'])
+        self._render_page()
+        self.tabs.setCurrentIndex(0)
+        self.rb_type.setText(f'类型: STRUCT')
+        self.rb_elapsed.setText(f'耗时: —')
+        self.rb_rows.setText(f'字段: {len(columns)}')
+        self.rb_status.setText('')
+        self.rb_status.setStyleSheet('')
 
     # ── DB 操作 ─────────────────────────────
     def _add_db_dialog(self):
