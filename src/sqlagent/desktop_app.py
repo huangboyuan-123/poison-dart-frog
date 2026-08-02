@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import requests
-from PySide6.QtCore import (Qt, QThread, Signal, QRect, QRegularExpression)
+from PySide6 import QtCore
+from PySide6.QtCore import (Qt, QThread, Signal, QRect, QRegularExpression, QSize)
 from PySide6.QtGui import (QAction, QColor, QFont, QFontDatabase,
                             QKeySequence, QSyntaxHighlighter,
                             QTextCharFormat, QPalette, QIcon, QAction)
@@ -30,6 +31,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox,
 # 配色 & 常量
 # ═══════════════════════════════════════════
 API_BASE = 'http://localhost:8000'
+ICONS_DIR = Path(__file__).parent / 'static'
 MUTED = '#5A6270'
 SUCCESS_COLOR = '#3FB950'
 DANGER_COLOR = '#E05555'
@@ -448,6 +450,7 @@ class MainWindow(QMainWindow):
         self.schema_tree = QTreeWidget()
         self.schema_tree.setHeaderHidden(True)
         self.schema_tree.setIndentation(14)
+        self.schema_tree.setIconSize(QSize(18, 18))
         self.schema_tree.itemExpanded.connect(self._on_tree_expand)
         self.schema_tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.schema_tree.customContextMenuRequested.connect(self._on_tree_menu)
@@ -557,7 +560,9 @@ class MainWindow(QMainWindow):
             self.tree_label.setText(f'{len(dbs)} 个数据库')
 
             for db_name in dbs:
-                db_item = QTreeWidgetItem([f'📁 {db_name}'])
+                db_item = QTreeWidgetItem([db_name])
+                db_icon = QIcon(str(ICONS_DIR / 'database.png'))
+                db_item.setIcon(0, db_icon)
                 db_item.setData(0, Qt.UserRole + 1, 'database')
                 db_item.setData(0, Qt.UserRole + 2, db_name)
                 # 占位符, 展开时加载
