@@ -369,7 +369,7 @@ class MainWindow(QMainWindow):
 
         toolbar = QHBoxLayout()
         self.tree_label = QLabel('')
-        self.tree_label.setStyleSheet(f'color: {GRAY}; font-size: 11px;')
+        self.tree_label.setStyleSheet(f'color: {MUTED}; font-size: 11px;')
         toolbar.addWidget(self.tree_label)
         toolbar.addStretch()
         refresh_btn = QPushButton('刷新')
@@ -581,7 +581,7 @@ class MainWindow(QMainWindow):
             col_text = f"{col['name']}: {col['type']}{null}{key_info}"
             col_item = QTreeWidgetItem([col_text])
             col_item.setData(0, Qt.UserRole + 1, 'column')
-            col_item.setForeground(0, QColor(GRAY))
+            col_item.setForeground(0, QColor(MUTED))
             item.addChild(col_item)
 
     def _on_tree_menu(self, pos):
