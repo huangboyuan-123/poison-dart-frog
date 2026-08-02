@@ -19,7 +19,7 @@ from PySide6.QtGui import (QAction, QColor, QFont, QFontDatabase,
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox,
                                 QDialog, QDialogButtonBox, QFileDialog,
                                 QFormLayout, QHBoxLayout, QHeaderView, QLabel,
-                                QLineEdit, QMainWindow, QMenu, QMessageBox,
+                                QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox,
                                 QPlainTextEdit, QPushButton, QSizePolicy,
                                 QSpacerItem, QSplitter, QStatusBar, QStyle,
                                 QTabWidget, QTableWidget, QTableWidgetItem,
@@ -308,6 +308,32 @@ class MainWindow(QMainWindow):
 
     # ── UI 构建 ────────────────────────────
     def _setup_ui(self):
+        # ── 菜单栏 ──
+        menubar = self.menuBar()
+        menubar.setStyleSheet(f"""
+            QMenuBar {{ background: {BG}; color: {MUTED}; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 2px 0; }}
+            QMenuBar::item {{ padding: 4px 12px; }}
+            QMenuBar::item:selected {{ background: {ACCENT_COLOR}; color: white; }}
+        """)
+
+        file_menu = menubar.addMenu('文件')
+        act_conn = QAction('编辑连接', self)
+        act_conn.triggered.connect(self._add_db_dialog)
+        file_menu.addAction(act_conn)
+        file_menu.addSeparator()
+        act_exit = QAction('退出', self)
+        act_exit.triggered.connect(self.close)
+        file_menu.addAction(act_exit)
+
+        tools_menu = menubar.addMenu('工具')
+        act_export_csv = QAction('导出 CSV', self)
+        act_export_csv.triggered.connect(self._export_csv)
+        tools_menu.addAction(act_export_csv)
+        tools_menu.addSeparator()
+        act_clear_hist = QAction('清除历史记录', self)
+        act_clear_hist.triggered.connect(self._clear_history)
+        tools_menu.addAction(act_clear_hist)
+
         central = QWidget()
         self.setCentralWidget(central)
         root_layout = QVBoxLayout(central)
@@ -439,14 +465,12 @@ class MainWindow(QMainWindow):
         hdr = QHBoxLayout()
         hdr.addWidget(QLabel('📊 数据库'))
         hdr.addStretch()
-        add_conn_btn = QPushButton('+')
-        add_conn_btn.setFixedSize(22, 22)
-        add_conn_btn.setToolTip('新增数据库连接')
+        add_conn_btn = QPushButton('+ 新增')
+        add_conn_btn.setFixedHeight(22)
         add_conn_btn.clicked.connect(self._add_db_dialog)
         hdr.addWidget(add_conn_btn)
-        refresh_btn = QPushButton('↻')
-        refresh_btn.setFixedSize(22, 22)
-        refresh_btn.setToolTip('刷新结构')
+        refresh_btn = QPushButton('刷新')
+        refresh_btn.setFixedHeight(22)
         refresh_btn.clicked.connect(self._load_schema_tree)
         hdr.addWidget(refresh_btn)
         layout.addLayout(hdr)
@@ -544,6 +568,7 @@ class MainWindow(QMainWindow):
         self._refresh_db_combo()
         self._refresh_history()
         self._check_health()
+        self._load_schema_tree()
 
     def _refresh_db_combo(self):
         self.db_combo.clear()
