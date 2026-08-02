@@ -341,25 +341,25 @@ class MainWindow(QMainWindow):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        # 三栏分栏: 结构树 | 输入+SQL | 结果
+        # 三栏分栏: A(表树) | B(数据浏览) | C(AI+日志)
         splitter = QSplitter(Qt.Horizontal)
         root_layout.addWidget(splitter)
 
-        sidebar = QWidget()
-        center = QWidget()
-        right = QWidget()
-        splitter.addWidget(sidebar)
-        splitter.addWidget(center)
-        splitter.addWidget(right)
-        splitter.setStretchFactor(0, 0)   # 固定宽度
-        splitter.setStretchFactor(1, 42)
-        splitter.setStretchFactor(2, 58)
+        panel_a = QWidget()
+        panel_b = QWidget()
+        panel_c = QWidget()
+        splitter.addWidget(panel_a)
+        splitter.addWidget(panel_b)
+        splitter.addWidget(panel_c)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 40)
+        splitter.setStretchFactor(2, 60)
         splitter.setHandleWidth(4)
-        sidebar.setFixedWidth(220)
+        panel_a.setFixedWidth(200)
 
-        self._build_sidebar(sidebar)
-        self._build_center(center)
-        self._build_right(right)
+        self._build_panel_a(panel_a)
+        self._build_panel_b(panel_b)
+        self._build_panel_c(panel_c)
 
         # 状态栏
         self.status_bar = QStatusBar()
@@ -369,58 +369,133 @@ class MainWindow(QMainWindow):
         self.status_bar.addWidget(self.sb_db)
         self.status_bar.addPermanentWidget(self.sb_history)
 
-    def _build_center(self, parent: QWidget):
+    # ═══ A栏: 数据库菜单 ═══
+    def _build_panel_a(self, parent: QWidget):
         layout = QVBoxLayout(parent)
-        layout.setContentsMargins(8, 8, 4, 4)
+        layout.setContentsMargins(4, 8, 2, 4)
+        layout.setSpacing(4)
+
+        hdr = QHBoxLayout()
+        hdr.addWidget(QLabel('📊 数据库'))
+        hdr.addStretch()
+        add_btn = QPushButton('+ 新增')
+        add_btn.setFixedHeight(22)
+        add_btn.clicked.connect(self._add_db_dialog)
+        hdr.addWidget(add_btn)
+        refresh_btn = QPushButton('刷新')
+        refresh_btn.setFixedHeight(22)
+        refresh_btn.clicked.connect(self._load_schema_tree)
+        hdr.addWidget(refresh_btn)
+        layout.addLayout(hdr)
+
+        self.schema_tree = QTreeWidget()
+        self.schema_tree.setHeaderHidden(True)
+        self.schema_tree.setIndentation(14)
+        self.schema_tree.setIconSize(QSize(18, 18))
+        self.schema_tree.itemExpanded.connect(self._on_tree_expand)
+        self.schema_tree.itemClicked.connect(self._on_tree_click)
+        self.schema_tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.schema_tree.customContextMenuRequested.connect(self._on_tree_menu)
+        layout.addWidget(self.schema_tree, 1)
+
+        self.tree_label = QLabel('')
+        self.tree_label.setStyleSheet(f'color: {MUTED}; font-size: 10px;')
+        layout.addWidget(self.tree_label)
+
+        conn_row = QHBoxLayout()
+        self.sidebar_combo = QComboBox()
+        self.sidebar_combo.setMinimumHeight(24)
+        self.sidebar_combo.currentIndexChanged.connect(self._on_sidebar_db_select)
+        conn_row.addWidget(self.sidebar_combo, 1)
+        mgr_btn = QPushButton('⚙')
+        mgr_btn.setFixedSize(22, 22)
+        mgr_btn.setToolTip('管理连接')
+        mgr_btn.clicked.connect(self._add_db_dialog)
+        conn_row.addWidget(mgr_btn)
+        layout.addLayout(conn_row)
+
+    # ═══ B栏: 数据浏览器 ═══
+    def _build_panel_b(self, parent: QWidget):
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(4, 8, 4, 4)
+        layout.setSpacing(4)
+
+        # 标题 + 执行状态
+        top = QHBoxLayout()
+        self.data_title = QLabel('数据浏览')
+        self.data_title.setStyleSheet('font-weight: bold; font-size: 13px;')
+        top.addWidget(self.data_title)
+        top.addStretch()
+        self.rb_type = QLabel('')
+        self.rb_elapsed = QLabel('')
+        self.rb_rows = QLabel('')
+        for lbl in [self.rb_type, self.rb_elapsed, self.rb_rows]:
+            lbl.setStyleSheet(f'color: {MUTED}; font-size: 11px;')
+            top.addWidget(lbl)
+        self.rb_status = QLabel('')
+        top.addWidget(self.rb_status)
+        layout.addLayout(top)
+
+        # 结果表格
+        self.result_table = QTableWidget()
+        self.result_table.setAlternatingRowColors(True)
+        self.result_table.horizontalHeader().setStretchLastSection(True)
+        layout.addWidget(self.result_table, 1)
+
+        # 翻页
+        pager = QHBoxLayout()
+        self.page_label = QLabel('')
+        self.page_label.setStyleSheet(f'color: {MUTED}; font-size: 11px;')
+        pager.addWidget(self.page_label)
+        pager.addStretch()
+        pb1 = QPushButton('← 上一页')
+        pb1.setFixedHeight(24)
+        pb1.clicked.connect(self._prev_page)
+        pager.addWidget(pb1)
+        pb2 = QPushButton('下一页 →')
+        pb2.setFixedHeight(24)
+        pb2.clicked.connect(self._next_page)
+        pager.addWidget(pb2)
+        layout.addLayout(pager)
+
+        # 空引导
+        self._show_empty_data()
+
+    # ═══ C栏: AI助手 + 日志 ═══
+    def _build_panel_c(self, parent: QWidget):
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(4, 8, 8, 4)
         layout.setSpacing(6)
 
-        # ── DB 配置栏 ──
+        # DB 配置
         db_bar = QHBoxLayout()
         self.db_combo = QComboBox()
-        self.db_combo.setMinimumHeight(28)
+        self.db_combo.setMinimumHeight(26)
         self.db_combo.currentIndexChanged.connect(self._on_db_select)
         db_bar.addWidget(self.db_combo, 1)
-
-        add_btn = QPushButton('+')
-        add_btn.setFixedSize(28, 28)
-        add_btn.clicked.connect(self._add_db_dialog)
-        db_bar.addWidget(add_btn)
-
-        test_btn = QPushButton('测')
-        test_btn.setFixedSize(28, 28)
-        test_btn.clicked.connect(self._test_db)
-        db_bar.addWidget(test_btn)
-
         self.db_status = QLabel('')
         self.db_status.setStyleSheet(f'color: {MUTED}; font-size: 11px;')
         db_bar.addWidget(self.db_status)
         layout.addLayout(db_bar)
 
-        # ── 自然语言输入 ──
+        # 自然语言输入
         nl_group = QGroupBox('自然语言输入')
         nl_ly = QVBoxLayout(nl_group)
         self.input_text = QPlainTextEdit()
-        self.input_text.setPlaceholderText(
-            '用中文描述你想要查询/修改的数据...\n'
-            '例: 查询本月订单总数、统计每个用户消费金额'
-        )
-        self.input_text.setMaximumHeight(120)
+        self.input_text.setPlaceholderText('用中文描述想要查询/修改的数据...\n例: 查询本月订单总数')
+        self.input_text.setMaximumHeight(100)
         nl_ly.addWidget(self.input_text)
-
         btn_row = QHBoxLayout()
         self.gen_btn = QPushButton('生成 SQL')
         self.gen_btn.setProperty('accent', True)
         self.gen_btn.clicked.connect(self._generate_sql)
         btn_row.addWidget(self.gen_btn)
-
-        clear_btn = QPushButton('清空')
-        clear_btn.clicked.connect(lambda: self.input_text.clear())
-        btn_row.addWidget(clear_btn)
+        btn_row.addWidget(QPushButton('清空', clicked=lambda: self.input_text.clear()))
         btn_row.addStretch()
         nl_ly.addLayout(btn_row)
         layout.addWidget(nl_group)
 
-        # ── SQL 预览 ──
+        # SQL 预览
         sql_group = QGroupBox('SQL 预览')
         sql_ly = QVBoxLayout(sql_group)
         self.sql_text = QPlainTextEdit()
@@ -431,137 +506,33 @@ class MainWindow(QMainWindow):
         font.setStyleHint(QFont.Monospace)
         self.sql_text.setFont(font)
         sql_ly.addWidget(self.sql_text)
-
-        # 高亮器
         self.highlighter = SqlHighlighter(self.sql_text.document())
 
-        # 执行按钮
         exec_row = QHBoxLayout()
         self.exec_btn = QPushButton('执行 SQL')
         self.exec_btn.setProperty('accent', True)
         self.exec_btn.clicked.connect(self._execute_sql)
         exec_row.addWidget(self.exec_btn)
-
-        export_btn = QPushButton('导出 CSV')
-        export_btn.clicked.connect(self._export_csv)
-        exec_row.addWidget(export_btn)
-
+        exec_row.addWidget(QPushButton('导出 CSV', clicked=self._export_csv))
         self.tx_check = QCheckBox('开启事务')
         exec_row.addWidget(self.tx_check)
-
         exec_row.addStretch()
-
-        copy_btn = QPushButton('复制 SQL')
-        copy_btn.clicked.connect(self._copy_sql)
-        exec_row.addWidget(copy_btn)
+        exec_row.addWidget(QPushButton('复制 SQL', clicked=self._copy_sql))
         sql_ly.addLayout(exec_row)
         layout.addWidget(sql_group, 1)
 
-    def _build_sidebar(self, parent: QWidget):
-        layout = QVBoxLayout(parent)
-        layout.setContentsMargins(6, 8, 2, 4)
-        layout.setSpacing(6)
-
-        # DB 连接管理
-        hdr = QHBoxLayout()
-        hdr.addWidget(QLabel('📊 数据库'))
-        hdr.addStretch()
-        add_conn_btn = QPushButton('+ 新增')
-        add_conn_btn.setFixedHeight(22)
-        add_conn_btn.clicked.connect(self._add_db_dialog)
-        hdr.addWidget(add_conn_btn)
-        refresh_btn = QPushButton('刷新')
-        refresh_btn.setFixedHeight(22)
-        refresh_btn.clicked.connect(self._load_schema_tree)
-        hdr.addWidget(refresh_btn)
-        layout.addLayout(hdr)
-
-        # 结构树 (占满整栏)
-        self.schema_tree = QTreeWidget()
-        self.schema_tree.setHeaderHidden(True)
-        self.schema_tree.setIndentation(14)
-        self.schema_tree.setIconSize(QSize(18, 18))
-        self.schema_tree.itemExpanded.connect(self._on_tree_expand)
-        self.schema_tree.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.schema_tree.customContextMenuRequested.connect(self._on_tree_menu)
-        layout.addWidget(self.schema_tree, 1)
-
-        self.tree_label = QLabel('')
-        self.tree_label.setStyleSheet(f'color: {MUTED}; font-size: 10px;')
-        self.tree_label.setWordWrap(True)
-        layout.addWidget(self.tree_label)
-
-        # 连接切换
-        conn_row = QHBoxLayout()
-        self.sidebar_combo = QComboBox()
-        self.sidebar_combo.setMinimumHeight(24)
-        self.sidebar_combo.setToolTip('切换数据库连接')
-        self.sidebar_combo.currentIndexChanged.connect(self._on_sidebar_db_select)
-        conn_row.addWidget(self.sidebar_combo, 1)
-        manage_btn = QPushButton('⚙')
-        manage_btn.setFixedSize(22, 22)
-        manage_btn.setToolTip('管理连接')
-        manage_btn.clicked.connect(self._add_db_dialog)
-        conn_row.addWidget(manage_btn)
-        layout.addLayout(conn_row)
-
-    def _build_right(self, parent: QWidget):
-        layout = QVBoxLayout(parent)
-        layout.setContentsMargins(4, 8, 8, 4)
-        layout.setSpacing(4)
-
-        # ── 执行状态 ──
-        stat_row = QHBoxLayout()
-        self.rb_type = QLabel('类型: —')
-        self.rb_elapsed = QLabel('耗时: —')
-        self.rb_rows = QLabel('行数: —')
-        self.rb_status = QLabel('')
-        for lbl in [self.rb_type, self.rb_elapsed, self.rb_rows]:
-            lbl.setStyleSheet(f'color: {MUTED}; font-size: 12px;')
-            stat_row.addWidget(lbl)
-        stat_row.addStretch()
-        stat_row.addWidget(self.rb_status)
-        layout.addLayout(stat_row)
-
-        # ── Tab 容器 ──
+        # 日志 + 历史 (tabs)
         self.tabs = QTabWidget()
-        layout.addWidget(self.tabs, 1)
-
-        # Tab 1: 查询结果
-        self.result_table = QTableWidget()
-        self.result_table.setAlternatingRowColors(True)
-        self.result_table.horizontalHeader().setStretchLastSection(True)
-        self.tabs.addTab(self.result_table, '查询结果')
-
-        # 翻页
-        page_widget = QWidget()
-        page_layout = QHBoxLayout(page_widget)
-        page_layout.setContentsMargins(0, 0, 0, 0)
-        self.page_label = QLabel('')
-        self.page_label.setStyleSheet(f'color: {MUTED}; font-size: 11px;')
-        page_layout.addWidget(self.page_label)
-        page_layout.addStretch()
-        prev_btn = QPushButton('← 上一页')
-        prev_btn.setFixedHeight(24)
-        prev_btn.clicked.connect(self._prev_page)
-        page_layout.addWidget(prev_btn)
-        next_btn = QPushButton('下一页 →')
-        next_btn.setFixedHeight(24)
-        next_btn.clicked.connect(self._next_page)
-        page_layout.addWidget(next_btn)
-        layout.addWidget(page_widget)
-
-        # Tab 2: 执行日志
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         self.log_text.setFont(QFont('Consolas', 10))
         self.tabs.addTab(self.log_text, '执行日志')
-        self._show_log('在左侧输入问题，点击「生成 SQL」，然后「执行 SQL」\n查询结果将显示在这里')
+        self._show_log('AI 生成的 SQL 分析、执行日志将显示在这里')
 
-        # Tab 3: 历史记录
         self.history_list = QListWidget()
         self.history_list.itemDoubleClicked.connect(self._on_history_click)
         self.tabs.addTab(self.history_list, '历史记录')
+        layout.addWidget(self.tabs)
 
     # ── 数据加载 ────────────────────────────
     def _load_data(self):
@@ -626,6 +597,56 @@ class MainWindow(QMainWindow):
                 self.schema_tree.addTopLevelItem(db_item)
 
         self._run_async(do_fetch, callback)
+
+    def _on_tree_click(self, item: QTreeWidgetItem, _col: int):
+        """点击表节点 → B栏加载该表数据"""
+        if item.data(0, Qt.UserRole + 1) != 'table':
+            return
+        table_name = item.text(0)
+        db_name = item.data(0, Qt.UserRole + 2)
+        self.data_title.setText(f'📋 {table_name}')
+        self._load_table_data(db_name, table_name)
+
+    def _load_table_data(self, db: str, table: str):
+        """加载指定表的数据到 B 栏"""
+        def do_fetch():
+            try:
+                r = requests.post(f'{API_BASE}/api/execute',
+                                  json={'sql': f'SELECT * FROM {table} LIMIT 500', 'read_only': True},
+                                  timeout=30)
+                return r.json()
+            except Exception as e:
+                return {'error': str(e), 'success': False}
+
+        def callback(resp):
+            self.rb_type.setText(f'表: {table}')
+            self.rb_elapsed.setText('')
+            self.rb_status.setText('')
+            self.rb_status.setStyleSheet('')
+            if resp.get('success') and resp.get('data'):
+                data = resp['data']
+                self._rows = data['rows']
+                self._page = 0
+                self.result_table.setColumnCount(len(data['columns']))
+                self.result_table.setHorizontalHeaderLabels(data['columns'])
+                self._render_page()
+                self.rb_rows.setText(f'{data["row_count"]} 行')
+            else:
+                self.rb_rows.setText('0 行')
+                self.rb_status.setText('✗ 加载失败')
+                self.rb_status.setStyleSheet(f'color: {DANGER_COLOR}; font-weight: bold;')
+
+        self._run_async(do_fetch, callback)
+
+    def _show_empty_data(self):
+        """B栏空状态"""
+        self.result_table.setRowCount(0)
+        self.result_table.setColumnCount(1)
+        self.result_table.setHorizontalHeaderLabels(['提示'])
+        self.result_table.setRowCount(1)
+        item = QTableWidgetItem('👈 点击左侧数据库中的表名浏览数据')
+        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+        self.result_table.setItem(0, 0, item)
 
     def _on_tree_expand(self, item: QTreeWidgetItem):
         """展开节点时懒加载"""
@@ -787,7 +808,7 @@ class MainWindow(QMainWindow):
             if error:
                 self.sql_text.setPlainText(f'-- 生成失败: {error}')
                 self._show_log(f'✗ 生成失败\n{error}')
-                self.tabs.setCurrentIndex(1)
+                self.tabs.setCurrentIndex(0)
             elif sql and sql.strip():
                 # 有提取到的 SQL — 放进预览框
                 self.sql_text.setPlainText(sql)
@@ -796,7 +817,7 @@ class MainWindow(QMainWindow):
                 # 没有 SQL — 只显示 AI 分析在日志区，预览框置灰提示
                 self.sql_text.setPlainText('-- AI 未生成 SQL 语句，请查看「执行日志」Tab 中的分析')
                 self._show_log(f'🤖 AI 分析 (未生成SQL)\n{"─"*50}\n{answer}')
-                self.tabs.setCurrentIndex(1)
+                self.tabs.setCurrentIndex(0)
 
         self._run_async(do_generate, callback)
 
@@ -861,14 +882,14 @@ class MainWindow(QMainWindow):
                     self.tabs.setCurrentIndex(0)
                 else:
                     self._show_log(f'✓ 执行成功\n受影响行数: {row_count}\n耗时: {elapsed:.0f}ms')
-                    self.tabs.setCurrentIndex(1)
+                    self.tabs.setCurrentIndex(0)
             else:
                 self.rb_rows.setText('行数: —')
                 self.rb_status.setText('✗ 执行失败')
                 self.rb_status.setStyleSheet(f'color: {DANGER_COLOR}; font-weight: bold;')
                 error = resp.get('error', '未知错误')
                 self._show_log(f'✗ 执行失败\n{error}\n耗时: {elapsed:.0f}ms')
-                self.tabs.setCurrentIndex(1)
+                self.tabs.setCurrentIndex(0)
 
             # 保存历史
             history = load_history()
@@ -888,7 +909,7 @@ class MainWindow(QMainWindow):
         self._rows = data['rows']
         self._page = 0
         columns = data['columns']
-
+        self.data_title.setText('📋 查询结果')
         self.result_table.setColumnCount(len(columns))
         self.result_table.setHorizontalHeaderLabels(columns)
         self.result_table.setRowCount(0)
