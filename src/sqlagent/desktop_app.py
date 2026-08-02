@@ -312,19 +312,24 @@ class MainWindow(QMainWindow):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        # 左右分栏
+        # 三栏分栏: 结构树 | 输入+SQL | 结果
         splitter = QSplitter(Qt.Horizontal)
         root_layout.addWidget(splitter)
 
-        left = QWidget()
+        sidebar = QWidget()
+        center = QWidget()
         right = QWidget()
-        splitter.addWidget(left)
+        splitter.addWidget(sidebar)
+        splitter.addWidget(center)
         splitter.addWidget(right)
-        splitter.setStretchFactor(0, 42)
-        splitter.setStretchFactor(1, 58)
+        splitter.setStretchFactor(0, 0)   # 固定宽度
+        splitter.setStretchFactor(1, 42)
+        splitter.setStretchFactor(2, 58)
         splitter.setHandleWidth(4)
+        sidebar.setFixedWidth(220)
 
-        self._build_left(left)
+        self._build_sidebar(sidebar)
+        self._build_center(center)
         self._build_right(right)
 
         # 状态栏
@@ -335,7 +340,7 @@ class MainWindow(QMainWindow):
         self.status_bar.addWidget(self.sb_db)
         self.status_bar.addPermanentWidget(self.sb_history)
 
-    def _build_left(self, parent: QWidget):
+    def _build_center(self, parent: QWidget):
         layout = QVBoxLayout(parent)
         layout.setContentsMargins(8, 8, 4, 4)
         layout.setSpacing(6)
@@ -361,32 +366,6 @@ class MainWindow(QMainWindow):
         self.db_status.setStyleSheet(f'color: {MUTED}; font-size: 11px;')
         db_bar.addWidget(self.db_status)
         layout.addLayout(db_bar)
-
-        # ── 数据库结构树 ──
-        tree_group = QGroupBox('数据库结构')
-        tree_ly = QVBoxLayout(tree_group)
-        tree_ly.setContentsMargins(0, 0, 0, 0)
-
-        toolbar = QHBoxLayout()
-        self.tree_label = QLabel('')
-        self.tree_label.setStyleSheet(f'color: {MUTED}; font-size: 11px;')
-        toolbar.addWidget(self.tree_label)
-        toolbar.addStretch()
-        refresh_btn = QPushButton('刷新')
-        refresh_btn.setFixedHeight(22)
-        refresh_btn.clicked.connect(self._load_schema_tree)
-        toolbar.addWidget(refresh_btn)
-        tree_ly.addLayout(toolbar)
-
-        self.schema_tree = QTreeWidget()
-        self.schema_tree.setHeaderHidden(True)
-        self.schema_tree.setIndentation(16)
-        self.schema_tree.setMaximumHeight(220)
-        self.schema_tree.itemExpanded.connect(self._on_tree_expand)
-        self.schema_tree.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.schema_tree.customContextMenuRequested.connect(self._on_tree_menu)
-        tree_ly.addWidget(self.schema_tree)
-        layout.addWidget(tree_group)
 
         # ── 自然语言输入 ──
         nl_group = QGroupBox('自然语言输入')
@@ -448,6 +427,36 @@ class MainWindow(QMainWindow):
         exec_row.addWidget(copy_btn)
         sql_ly.addLayout(exec_row)
         layout.addWidget(sql_group, 1)
+
+    def _build_sidebar(self, parent: QWidget):
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(6, 8, 2, 4)
+        layout.setSpacing(6)
+
+        # DB 连接指示
+        hdr = QHBoxLayout()
+        hdr.addWidget(QLabel('📊 数据库'))
+        hdr.addStretch()
+        refresh_btn = QPushButton('↻')
+        refresh_btn.setFixedSize(22, 22)
+        refresh_btn.setToolTip('刷新结构')
+        refresh_btn.clicked.connect(self._load_schema_tree)
+        hdr.addWidget(refresh_btn)
+        layout.addLayout(hdr)
+
+        # 结构树 (占满整栏)
+        self.schema_tree = QTreeWidget()
+        self.schema_tree.setHeaderHidden(True)
+        self.schema_tree.setIndentation(14)
+        self.schema_tree.itemExpanded.connect(self._on_tree_expand)
+        self.schema_tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.schema_tree.customContextMenuRequested.connect(self._on_tree_menu)
+        layout.addWidget(self.schema_tree, 1)
+
+        self.tree_label = QLabel('')
+        self.tree_label.setStyleSheet(f'color: {MUTED}; font-size: 10px;')
+        self.tree_label.setWordWrap(True)
+        layout.addWidget(self.tree_label)
 
     def _build_right(self, parent: QWidget):
         layout = QVBoxLayout(parent)
