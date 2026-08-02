@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox,
 # ═══════════════════════════════════════════
 API_BASE = 'http://localhost:8000'
 ICONS_DIR = Path(__file__).parent / 'static'
+BG = '#1E2128'
 MUTED = '#5A6270'
 SUCCESS_COLOR = '#3FB950'
 DANGER_COLOR = '#E05555'
