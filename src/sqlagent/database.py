@@ -177,21 +177,29 @@ class DatabaseManager:
 
         try:
             with self._engine.connect() as conn:
+                affected = 0
                 if read_only:
-                    # 只读模式：开启事务后回滚，确保不产生副作用
                     trans = conn.begin()
                     try:
                         result = conn.execute(text(sql))
-                        rows = [list(row) for row in result.fetchall()]
-                        columns = list(result.keys()) if result.returns_rows else []
+                        if result.returns_rows:
+                            rows = [list(row) for row in result.fetchall()]
+                            columns = list(result.keys())
+                        else:
+                            rows, columns = [], []
+                            affected = result.rowcount
                         trans.rollback()
                     except Exception:
                         trans.rollback()
                         raise
                 else:
                     result = conn.execute(text(sql))
-                    rows = [list(row) for row in result.fetchall()]
-                    columns = list(result.keys()) if result.returns_rows else []
+                    if result.returns_rows:
+                        rows = [list(row) for row in result.fetchall()]
+                        columns = list(result.keys())
+                    else:
+                        rows, columns = [], []
+                        affected = result.rowcount
                     conn.commit()
 
                 return {
@@ -200,7 +208,7 @@ class DatabaseManager:
                     "data": {
                         "columns": columns,
                         "rows": rows,
-                        "row_count": len(rows),
+                        "row_count": len(rows) or affected,
                     },
                 }
 
