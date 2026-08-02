@@ -1,61 +1,220 @@
 """
-SQLAgent Desktop — Tkinter 桌面端
-Python 内置 GUI，零额外依赖
+SQLAgent Desktop — PySide6 桌面端
+Qt for Python 现代 GUI
 运行: python src/sqlagent/desktop_app.py
 """
+import csv
 import json
-import os
 import re
-import threading
-import tkinter as tk
 from datetime import datetime
 from pathlib import Path
-from tkinter import messagebox, scrolledtext, ttk
 from typing import Any, Dict, List, Optional
 
 import requests
+from PySide6.QtCore import (Qt, QThread, Signal, QRect, QRegularExpression)
+from PySide6.QtGui import (QAction, QColor, QFont, QFontDatabase,
+                            QKeySequence, QSyntaxHighlighter,
+                            QTextCharFormat, QPalette, QIcon)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDialog,
+                                QDialogButtonBox, QFileDialog, QFormLayout,
+                                QHBoxLayout, QHeaderView, QLabel, QLineEdit,
+                                QMainWindow, QMessageBox, QPlainTextEdit,
+                                QPushButton, QSplitter, QStatusBar,
+                                QTabWidget, QTableWidget, QTableWidgetItem,
+                                QTextEdit, QVBoxLayout, QWidget, QListWidget,
+                                QListWidgetItem, QSpacerItem, QSizePolicy,
+                                QGroupBox)
 
 # ═══════════════════════════════════════════
 # 配色 & 常量
 # ═══════════════════════════════════════════
-BG = '#1E2128'
-PANEL = '#272B33'
-INPUT_BG = '#2F343D'
-ACCENT = '#2574FF'
-WHITE = '#E8E8E8'
-GRAY = '#86909C'
-MUTED = '#5A6270'
-DANGER = '#E05555'
-SUCCESS = '#3FB950'
-WARNING = '#D29922'
-FONT = ('Consolas', 10)
-FONT_SM = ('Consolas', 9)
 API_BASE = 'http://localhost:8000'
+MUTED = '#5A6270'
+SUCCESS_COLOR = '#3FB950'
+DANGER_COLOR = '#E05555'
+WARNING_COLOR = '#D29922'
+ACCENT_COLOR = '#2574FF'
+
+DB_CONFIG_FILE = Path(__file__).parent.parent.parent / '.db_configs.json'
 HISTORY_FILE = Path.home() / '.sqlagent_history.json'
 
-# 高危 SQL 关键字
 DANGER_KW = ['DROP TABLE', 'DROP DATABASE', 'TRUNCATE', 'DELETE FROM']
+
+# ═══════════════════════════════════════════
+# 暗色主题 Stylesheet
+# ═══════════════════════════════════════════
+DARK_QSS = """
+QMainWindow, QWidget { background: #1E2128; color: #E8E8E8; font-family: "Consolas","Microsoft YaHei"; font-size: 13px; }
+QGroupBox { border: 1px solid rgba(255,255,255,0.06); border-radius: 4px; margin-top: 14px; padding-top: 14px; font-weight: bold; color: #86909C; }
+QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 6px; }
+QLineEdit, QPlainTextEdit, QTextEdit {
+    background: #2F343D; color: #E8E8E8; border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 4px; padding: 6px 8px; selection-background-color: #2574FF;
+}
+QPlainTextEdit:focus, QTextEdit:focus, QLineEdit:focus {
+    border: 1px solid #2574FF;
+}
+QComboBox {
+    background: #2F343D; color: #E8E8E8; border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 4px; padding: 4px 8px; min-height: 20px;
+}
+QComboBox:hover { border-color: rgba(255,255,255,0.12); }
+QComboBox::drop-down { border: none; width: 20px; }
+QComboBox QAbstractItemView {
+    background: #272B33; color: #E8E8E8; selection-background-color: #2574FF;
+    border: 1px solid rgba(255,255,255,0.06); outline: none;
+}
+QPushButton {
+    background: #2F343D; color: #E8E8E8; border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 4px; padding: 5px 14px; min-height: 26px;
+}
+QPushButton:hover { background: #363B44; border-color: rgba(255,255,255,0.15); }
+QPushButton:pressed { background: #2574FF; }
+QPushButton[accent="true"] { background: #2574FF; border: none; font-weight: bold; }
+QPushButton[accent="true"]:hover { background: #1A5FD4; }
+QPushButton[danger="true"] { background: #E05555; border: none; }
+QPushButton:disabled { background: #2F343D; color: #5A6270; }
+QTableWidget {
+    background: #272B33; color: #E8E8E8; gridline-color: rgba(255,255,255,0.04);
+    border: none; selection-background-color: #2574FF;
+}
+QTableWidget::item { padding: 2px 6px; }
+QHeaderView::section {
+    background: #2F343D; color: #86909C; border: none; border-bottom: 2px solid rgba(255,255,255,0.06);
+    padding: 4px 8px; font-weight: bold; font-size: 11px;
+}
+QTabWidget::pane { border: none; background: #1E2128; }
+QTabBar::tab {
+    background: #272B33; color: #86909C; border: none; padding: 6px 16px;
+    margin-right: 2px; border-top-left-radius: 4px; border-top-right-radius: 4px;
+}
+QTabBar::tab:selected { background: #2574FF; color: #E8E8E8; }
+QTabBar::tab:hover:!selected { background: #363B44; }
+QSplitter::handle { background: rgba(255,255,255,0.04); }
+QSplitter::handle:hover { background: #2574FF; }
+QScrollBar:vertical { background: #1E2128; width: 6px; }
+QScrollBar::handle:vertical { background: #5A6270; border-radius: 3px; min-height: 30px; }
+QScrollBar::handle:vertical:hover { background: #86909C; }
+QScrollBar:horizontal { background: #1E2128; height: 6px; }
+QScrollBar::handle:horizontal { background: #5A6270; border-radius: 3px; min-width: 30px; }
+QScrollBar::add-line, QScrollBar::sub-line { height: 0; width: 0; }
+QStatusBar { background: #1E2128; color: #86909C; border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; }
+QListWidget { background: #272B33; color: #E8E8E8; border: none; outline: none; }
+QListWidget::item { padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+QListWidget::item:hover { background: #363B44; }
+QListWidget::item:selected { background: #2574FF; }
+QCheckBox { color: #86909C; spacing: 6px; }
+QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid rgba(255,255,255,0.15); border-radius: 2px; }
+QCheckBox::indicator:checked { background: #2574FF; border-color: #2574FF; }
+QDialog { background: #1E2128; }
+QMenu { background: #272B33; color: #E8E8E8; border: 1px solid rgba(255,255,255,0.06); padding: 4px; }
+QMenu::item { padding: 6px 24px; border-radius: 2px; }
+QMenu::item:selected { background: #2574FF; }
+"""
+
+# ═══════════════════════════════════════════
+# SQL 语法高亮器
+# ═══════════════════════════════════════════
+SQL_KEYWORDS = [
+    'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'NOT', 'IN', 'LIKE', 'BETWEEN',
+    'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'ON', 'AS', 'GROUP', 'BY',
+    'ORDER', 'HAVING', 'LIMIT', 'OFFSET', 'UNION', 'INSERT', 'INTO',
+    'VALUES', 'UPDATE', 'SET', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TABLE',
+    'COUNT', 'SUM', 'AVG', 'MAX', 'MIN', 'DISTINCT', 'EXPLAIN', 'INDEX',
+    'PRIMARY', 'KEY', 'FOREIGN', 'REFERENCES', 'NULL', 'DEFAULT',
+    'AUTO_INCREMENT', 'CASCADE', 'INFORMATION_SCHEMA', 'TABLE_NAME',
+    'COLUMN_NAME', 'DATE_SUB', 'DATE_ADD', 'NOW', 'VARCHAR', 'INT',
+    'BIGINT', 'DECIMAL', 'TEXT', 'DATETIME', 'TIMESTAMP', 'IF', 'EXISTS',
+    'SHOW', 'DESCRIBE', 'USE', 'TRUNCATE', 'RENAME', 'REPLACE', 'MERGE',
+    'ASC', 'DESC', 'IS', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END', 'ALL',
+    'ANY', 'SOME', 'FULL', 'CROSS', 'NATURAL', 'USING', 'UNIQUE', 'CHECK',
+    'CONSTRAINT', 'ADD', 'COLUMN', 'MODIFY', 'CHANGE', 'RENAME', 'TO',
+    'GRANT', 'REVOKE', 'ON', 'SCHEMA', 'DATABASE', 'VIEW', 'PROCEDURE',
+    'FUNCTION', 'TRIGGER', 'EVENT', 'CHARACTER', 'COLLATE', 'ENGINE',
+    'INNODB', 'MYISAM', 'CHARSET', 'UTF8MB4',
+]
+
+class SqlHighlighter(QSyntaxHighlighter):
+    """SQL 语法高亮器"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.rules: List[tuple] = []
+
+        # 关键字 (蓝色加粗)
+        kw_fmt = QTextCharFormat()
+        kw_fmt.setForeground(QColor('#6CB6FF'))
+        kw_fmt.setFontWeight(QFont.Bold)
+        for kw in SQL_KEYWORDS:
+            pattern = QRegularExpression(
+                r'\b' + kw.replace(' ', r'\s+') + r'\b',
+                QRegularExpression.CaseInsensitiveOption
+            )
+            self.rules.append((pattern, kw_fmt))
+
+        # 字符串 (绿色)
+        str_fmt = QTextCharFormat()
+        str_fmt.setForeground(QColor('#96D0A0'))
+        self.rules.append((QRegularExpression(r"'[^']*'"), str_fmt))
+        self.rules.append((QRegularExpression(r'"[^"]*"'), str_fmt))
+
+        # 数字 (橙色)
+        num_fmt = QTextCharFormat()
+        num_fmt.setForeground(QColor('#F0B679'))
+        self.rules.append((QRegularExpression(r'\b\d+\.?\d*\b'), num_fmt))
+
+        # 注释 (灰色斜体)
+        cmt_fmt = QTextCharFormat()
+        cmt_fmt.setForeground(QColor(MUTED))
+        cmt_fmt.setFontItalic(True)
+        self.rules.append((QRegularExpression(r'--[^\n]*'), cmt_fmt))
+        self.rules.append((QRegularExpression(r'/\*.*?\*/',
+                           QRegularExpression.DotMatchesEverythingOption), cmt_fmt))
+
+    def highlightBlock(self, text):
+        for pattern, fmt in self.rules:
+            it = pattern.globalMatch(text)
+            while it.hasNext():
+                m = it.next()
+                self.setFormat(m.capturedStart(), m.capturedLength(), fmt)
+
+
+# ═══════════════════════════════════════════
+# 后台工作线程
+# ═══════════════════════════════════════════
+class ApiWorker(QThread):
+    """后台 API 调用线程"""
+    finished = Signal(object)
+
+    def __init__(self, target, *args):
+        super().__init__()
+        self._target = target
+        self._args = args
+
+    def run(self):
+        try:
+            result = self._target(*self._args)
+        except Exception as e:
+            result = {'error': str(e), 'success': False}
+        self.finished.emit(result)
+
 
 # ═══════════════════════════════════════════
 # 数据库配置存储
 # ═══════════════════════════════════════════
-DB_CONFIGS: List[Dict[str, Any]] = []
-CURRENT_DB: Optional[Dict[str, Any]] = None
-
-DB_CONFIG_FILE = Path(__file__).parent.parent.parent / '.db_configs.json'
+_db_configs: List[Dict[str, Any]] = []
 
 def load_db_configs():
-    global DB_CONFIGS
+    global _db_configs
     try:
         if DB_CONFIG_FILE.exists():
-            DB_CONFIGS = json.loads(DB_CONFIG_FILE.read_text('utf-8'))
+            _db_configs = json.loads(DB_CONFIG_FILE.read_text('utf-8'))
     except Exception:
-        DB_CONFIGS = []
+        _db_configs = []
 
 def save_db_configs():
-    DB_CONFIG_FILE.write_text(json.dumps(DB_CONFIGS, ensure_ascii=False, indent=2), 'utf-8')
+    DB_CONFIG_FILE.write_text(json.dumps(_db_configs, ensure_ascii=False, indent=2), 'utf-8')
 
-def load_history():
+def load_history() -> List[Dict]:
     try:
         if HISTORY_FILE.exists():
             return json.loads(HISTORY_FILE.read_text('utf-8'))
@@ -63,302 +222,257 @@ def load_history():
         pass
     return []
 
-def save_history(items):
+def save_history(items: List[Dict]):
     HISTORY_FILE.write_text(json.dumps(items[-200:], ensure_ascii=False, indent=2), 'utf-8')
 
-# ═══════════════════════════════════════════
-# 异步 HTTP 调用 (后台线程 + root.after)
-# ═══════════════════════════════════════════
-def run_async(target, callback, *args):
-    """在后台线程执行 target(*args)，完成后在主线程调用 callback(result)。"""
-    def wrapper():
-        try:
-            result = target(*args)
-            app.root.after(0, callback, result)
-        except Exception as e:
-            app.root.after(0, callback, {'error': str(e)})
-    threading.Thread(target=wrapper, daemon=True).start()
 
 # ═══════════════════════════════════════════
-# 语法高亮
+# DB 连接弹窗
 # ═══════════════════════════════════════════
-SQL_KW = [
-    'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'NOT', 'IN', 'LIKE', 'BETWEEN',
-    'JOIN', 'LEFT', 'RIGHT', 'INNER', 'OUTER', 'ON', 'AS', 'GROUP BY',
-    'ORDER BY', 'HAVING', 'LIMIT', 'OFFSET', 'UNION', 'INSERT', 'INTO',
-    'VALUES', 'UPDATE', 'SET', 'DELETE', 'DROP', 'CREATE', 'ALTER', 'TABLE',
-    'COUNT', 'SUM', 'AVG', 'MAX', 'MIN', 'DISTINCT', 'EXPLAIN', 'INDEX',
-    'PRIMARY', 'KEY', 'FOREIGN', 'REFERENCES', 'NULL', 'NOT NULL',
-    'DEFAULT', 'AUTO_INCREMENT', 'CASCADE', 'INFORMATION_SCHEMA',
-    'TABLE_NAME', 'COLUMN_NAME', 'DATE_SUB', 'DATE_ADD', 'NOW',
-    'VARCHAR', 'INT', 'BIGINT', 'DECIMAL', 'TEXT', 'DATETIME', 'TIMESTAMP',
-    'CHARACTER', 'COLLATE', 'ENGINE', 'INNODB', 'IF', 'EXISTS', 'SHOW',
-    'DESCRIBE', 'USE', 'GRANT', 'REVOKE', 'TRUNCATE', 'RENAME', 'REPLACE',
-    'MERGE', 'ASC', 'DESC', 'IS', 'BETWEEN', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
-]
+class DbConfigDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle('数据库连接配置')
+        self.setMinimumWidth(420)
+        layout = QFormLayout(self)
+        layout.setSpacing(8)
 
-def highlight_sql(text_widget, sql):
-    """在 Text widget 中渲染高亮 SQL。"""
-    text_widget.config(state='normal')
-    text_widget.delete('1.0', 'end')
+        self.name_edit = QLineEdit()
+        self.name_edit.setPlaceholderText('我的数据库')
+        layout.addRow('名称:', self.name_edit)
 
-    # 先插入原始文本
-    text_widget.insert('1.0', sql)
+        self.type_combo = QComboBox()
+        self.type_combo.addItems(['mysql', 'postgresql', 'sqlserver', 'sqlite'])
+        layout.addRow('类型:', self.type_combo)
 
-    # 字符串 (绿色)
-    for m in re.finditer(r"'[^']*'", sql):
-        text_widget.tag_add('sql_str', f'1.0+{m.start()}c', f'1.0+{m.end()}c')
+        self.host_edit = QLineEdit('localhost')
+        layout.addRow('地址:', self.host_edit)
 
-    # 数字 (橙色)
-    for m in re.finditer(r'\b(\d+\.?\d*)\b', sql):
-        text_widget.tag_add('sql_num', f'1.0+{m.start()}c', f'1.0+{m.end()}c')
+        self.port_edit = QLineEdit('3306')
+        layout.addRow('端口:', self.port_edit)
 
-    # 注释 (灰色)
-    for m in re.finditer(r'--[^\n]*', sql):
-        text_widget.tag_add('sql_cmt', f'1.0+{m.start()}c', f'1.0+{m.end()}c')
+        self.user_edit = QLineEdit('root')
+        layout.addRow('用户名:', self.user_edit)
 
-    # 关键字 (蓝色)
-    for kw in SQL_KW:
-        for m in re.finditer(r'\b' + kw.replace(' ', r'\s+') + r'\b', sql, re.IGNORECASE):
-            text_widget.tag_add('sql_kw', f'1.0+{m.start()}c', f'1.0+{m.end()}c')
+        self.pass_edit = QLineEdit()
+        self.pass_edit.setEchoMode(QLineEdit.Password)
+        layout.addRow('密码:', self.pass_edit)
 
-    text_widget.config(state='disabled')
+        self.db_edit = QLineEdit('sqlagent')
+        layout.addRow('数据库:', self.db_edit)
+
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(self.accept)
+        btns.rejected.connect(self.reject)
+        layout.addRow(btns)
+
+    def get_config(self) -> Dict[str, Any]:
+        return {
+            'id': datetime.now().strftime('%Y%m%d%H%M%S'),
+            'name': self.name_edit.text(),
+            'type': self.type_combo.currentText(),
+            'host': self.host_edit.text(),
+            'port': int(self.port_edit.text()) if self.port_edit.text().isdigit() else 3306,
+            'user': self.user_edit.text(),
+            'password': self.pass_edit.text(),
+            'database': self.db_edit.text(),
+        }
+
 
 # ═══════════════════════════════════════════
-# 主应用类
+# 主窗口
 # ═══════════════════════════════════════════
-class App:
+class MainWindow(QMainWindow):
     def __init__(self):
-        self.root = tk.Tk()
-        self.root.title('SQLAgent Desktop')
-        self.root.geometry('1200x780')
-        self.root.minsize(900, 600)
-        self.root.configure(bg=BG)
+        super().__init__()
+        self.setWindowTitle('SQLAgent Desktop')
+        self.resize(1200, 780)
+        self.setMinimumSize(900, 600)
 
-        self._setup_style()
-        self._build_ui()
+        self._rows: List[List[Any]] = []
+        self._page = 0
+        self.PAGE_SIZE = 100
+        self._current_db: Optional[Dict] = None
+
+        self._setup_ui()
         self._load_data()
 
-    # ── 样式 ────────────────────────────────
-    def _setup_style(self):
-        style = ttk.Style()
-        style.theme_use('clam')
+    # ── UI 构建 ────────────────────────────
+    def _setup_ui(self):
+        central = QWidget()
+        self.setCentralWidget(central)
+        root_layout = QVBoxLayout(central)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
 
-        # 全局默认
-        style.configure('.', background=BG, foreground=WHITE, font=FONT_SM,
-                        fieldbackground=INPUT_BG, borderwidth=0, relief='flat')
-        style.configure('TFrame', background=BG)
-        style.configure('TLabel', background=BG, foreground=WHITE)
-        style.configure('TButton', background=INPUT_BG, foreground=WHITE,
-                        borderwidth=1, padding=(8, 4), relief='flat')
-        style.map('TButton', background=[('active', ACCENT), ('disabled', MUTED)],
-                  foreground=[('disabled', GRAY)])
-        style.configure('Accent.TButton', background=ACCENT, foreground=WHITE)
-        style.configure('Danger.TButton', background=DANGER, foreground=WHITE)
-        style.configure('TEntry', fieldbackground=INPUT_BG, foreground=WHITE)
-        style.configure('TCombobox', fieldbackground=INPUT_BG, foreground=WHITE,
-                        arrowcolor=WHITE, selectbackground=INPUT_BG)
-        style.map('TCombobox', fieldbackground=[('readonly', INPUT_BG)],
-                  selectbackground=[('readonly', INPUT_BG)])
-        style.configure('TPanedwindow', background=BG)
-        style.configure('TNotebook', background=BG, borderwidth=0)
-        style.configure('TNotebook.Tab', background=PANEL, foreground=WHITE,
-                        padding=(12, 4), borderwidth=0)
-        style.map('TNotebook.Tab', background=[('selected', ACCENT)])
-        style.configure('Treeview', background=PANEL, foreground=WHITE,
-                        fieldbackground=PANEL, borderwidth=0, rowheight=24)
-        style.configure('Treeview.Heading', background=INPUT_BG, foreground=WHITE,
-                        font=('Consolas', 9, 'bold'), borderwidth=0, padding=(4, 2))
-        style.map('Treeview', background=[('selected', ACCENT)])
-        style.configure('Vertical.TScrollbar', background=INPUT_BG, troughcolor=BG,
-                        arrowcolor=GRAY, borderwidth=0)
-        style.configure('Horizontal.TScrollbar', background=INPUT_BG, troughcolor=BG,
-                        arrowcolor=GRAY, borderwidth=0)
-        style.configure('Small.TCheckbutton', background=BG, foreground=WHITE,
-                        font=FONT_SM, padding=(2, 0))
-        # Combobox 下拉列表
-        self.root.option_add('*TCombobox*Listbox.background', PANEL)
-        self.root.option_add('*TCombobox*Listbox.foreground', WHITE)
-        self.root.option_add('*TCombobox*Listbox.selectBackground', ACCENT)
-        self.root.option_add('*TCombobox*Listbox.selectForeground', WHITE)
+        # 左右分栏
+        splitter = QSplitter(Qt.Horizontal)
+        root_layout.addWidget(splitter)
 
-    # ── 构建 UI ─────────────────────────────
-    def _build_ui(self):
-        # 主 PanedWindow (左右分栏)
-        self.paned = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
-        self.paned.pack(fill='both', expand=True, padx=(0, 0))
+        left = QWidget()
+        right = QWidget()
+        splitter.addWidget(left)
+        splitter.addWidget(right)
+        splitter.setStretchFactor(0, 42)
+        splitter.setStretchFactor(1, 58)
+        splitter.setHandleWidth(4)
 
-        self.left_frame = ttk.Frame(self.paned)
-        self.right_frame = ttk.Frame(self.paned)
-        self.paned.add(self.left_frame, weight=42)
-        self.paned.add(self.right_frame, weight=58)
+        self._build_left(left)
+        self._build_right(right)
 
-        self._build_left()
-        self._build_right()
-        self._build_statusbar()
+        # 状态栏
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
+        self.sb_db = QLabel('● 检测中...')
+        self.sb_history = QLabel('')
+        self.status_bar.addWidget(self.sb_db)
+        self.status_bar.addPermanentWidget(self.sb_history)
 
-    def _build_left(self):
-        lf = self.left_frame
+    def _build_left(self, parent: QWidget):
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(8, 8, 4, 4)
+        layout.setSpacing(6)
 
         # ── DB 配置栏 ──
-        db_bar = ttk.Frame(lf)
-        db_bar.pack(fill='x', padx=6, pady=(6, 0))
+        db_bar = QHBoxLayout()
+        self.db_combo = QComboBox()
+        self.db_combo.setMinimumHeight(28)
+        self.db_combo.currentIndexChanged.connect(self._on_db_select)
+        db_bar.addWidget(self.db_combo, 1)
 
-        self.db_combo = ttk.Combobox(db_bar, state='readonly')
-        self.db_combo.pack(side='left', fill='x', expand=True)
-        self.db_combo.bind('<<ComboboxSelected>>', self._on_db_select)
+        add_btn = QPushButton('+')
+        add_btn.setFixedSize(28, 28)
+        add_btn.clicked.connect(self._add_db_dialog)
+        db_bar.addWidget(add_btn)
 
-        ttk.Button(db_bar, text='+', width=3, command=self._add_db_dialog).pack(side='left', padx=(4, 0))
-        ttk.Button(db_bar, text='测', width=3, command=self._test_db).pack(side='left', padx=(4, 0))
-        self.db_status = ttk.Label(db_bar, text='')
-        self.db_status.pack(side='right', padx=(8, 0))
+        test_btn = QPushButton('测')
+        test_btn.setFixedSize(28, 28)
+        test_btn.clicked.connect(self._test_db)
+        db_bar.addWidget(test_btn)
+
+        self.db_status = QLabel('')
+        self.db_status.setStyleSheet(f'color: {MUTED}; font-size: 11px;')
+        db_bar.addWidget(self.db_status)
+        layout.addLayout(db_bar)
 
         # ── 自然语言输入 ──
-        nl_label = ttk.Label(lf, text='自然语言输入', font=('Consolas', 9, 'bold'), foreground=GRAY)
-        nl_label.pack(anchor='w', padx=8, pady=(8, 2))
+        nl_group = QGroupBox('自然语言输入')
+        nl_ly = QVBoxLayout(nl_group)
+        self.input_text = QPlainTextEdit()
+        self.input_text.setPlaceholderText(
+            '用中文描述你想要查询/修改的数据...\n'
+            '例: 查询本月订单总数、统计每个用户消费金额'
+        )
+        self.input_text.setMaximumHeight(120)
+        nl_ly.addWidget(self.input_text)
 
-        self.input_text = tk.Text(lf, height=6, bg=INPUT_BG, fg=WHITE, font=FONT,
-                                  insertbackground=WHITE, relief='flat',
-                                  padx=8, pady=6, wrap='word', undo=True)
-        self.input_text.pack(fill='x', padx=6)
-        self.input_text.insert('1.0', '')
-        self.input_text.bind('<Control-Return>', lambda e: self._generate_sql())
+        btn_row = QHBoxLayout()
+        self.gen_btn = QPushButton('生成 SQL')
+        self.gen_btn.setProperty('accent', True)
+        self.gen_btn.clicked.connect(self._generate_sql)
+        btn_row.addWidget(self.gen_btn)
 
-        # 输入区滚动条
-        # 按钮行
-        btn_row = ttk.Frame(lf)
-        btn_row.pack(fill='x', padx=6, pady=(4, 0))
-        self.gen_btn = ttk.Button(btn_row, text='生成 SQL', style='Accent.TButton',
-                                  command=self._generate_sql)
-        self.gen_btn.pack(side='left')
-        ttk.Button(btn_row, text='清空', command=self._clear_input).pack(side='left', padx=(6, 0))
+        clear_btn = QPushButton('清空')
+        clear_btn.clicked.connect(lambda: self.input_text.clear())
+        btn_row.addWidget(clear_btn)
+        btn_row.addStretch()
+        nl_ly.addLayout(btn_row)
+        layout.addWidget(nl_group)
 
         # ── SQL 预览 ──
-        sql_label = ttk.Label(lf, text='SQL 预览', font=('Consolas', 9, 'bold'), foreground=GRAY)
-        sql_label.pack(anchor='w', padx=8, pady=(10, 2))
+        sql_group = QGroupBox('SQL 预览')
+        sql_ly = QVBoxLayout(sql_group)
+        self.sql_text = QPlainTextEdit()
+        self.sql_text.setPlaceholderText('-- AI 生成的 SQL 将显示在这里')
+        self.sql_text.setReadOnly(True)
+        self.sql_text.setLineWrapMode(QPlainTextEdit.NoWrap)
+        font = QFont('Consolas', 10)
+        font.setStyleHint(QFont.Monospace)
+        self.sql_text.setFont(font)
+        sql_ly.addWidget(self.sql_text)
 
-        # SQL 预览框 (带滚动条)
-        sql_frame = ttk.Frame(lf)
-        sql_frame.pack(fill='both', expand=True, padx=6)
+        # 高亮器
+        self.highlighter = SqlHighlighter(self.sql_text.document())
 
-        self.sql_text = tk.Text(sql_frame, bg=BG, fg=WHITE, font=FONT,
-                                insertbackground=WHITE, relief='flat',
-                                padx=8, pady=6, wrap='none', undo=True)
-        sql_scroll_y = ttk.Scrollbar(sql_frame, orient='vertical', command=self.sql_text.yview)
-        sql_scroll_x = ttk.Scrollbar(sql_frame, orient='horizontal', command=self.sql_text.xview)
-        self.sql_text.configure(yscrollcommand=sql_scroll_y.set, xscrollcommand=sql_scroll_x.set)
+        # 执行按钮
+        exec_row = QHBoxLayout()
+        self.exec_btn = QPushButton('执行 SQL')
+        self.exec_btn.setProperty('accent', True)
+        self.exec_btn.clicked.connect(self._execute_sql)
+        exec_row.addWidget(self.exec_btn)
 
-        self.sql_text.grid(row=0, column=0, sticky='nsew')
-        sql_scroll_y.grid(row=0, column=1, sticky='ns')
-        sql_scroll_x.grid(row=1, column=0, sticky='ew')
-        sql_frame.grid_rowconfigure(0, weight=1)
-        sql_frame.grid_columnconfigure(0, weight=1)
+        export_btn = QPushButton('导出 CSV')
+        export_btn.clicked.connect(self._export_csv)
+        exec_row.addWidget(export_btn)
 
-        self.sql_text.insert('1.0', '-- AI 生成的 SQL 将显示在这里')
-        self.sql_text.config(state='disabled')
+        self.tx_check = QCheckBox('开启事务')
+        exec_row.addWidget(self.tx_check)
 
-        # 配置 tag 颜色
-        for tag, color in [('sql_kw', '#6CB6FF'), ('sql_str', '#96D0A0'),
-                           ('sql_num', '#F0B679'), ('sql_cmt', GRAY)]:
-            self.sql_text.tag_configure(tag, foreground=color)
-        self.sql_text.tag_configure('sql_kw', foreground='#6CB6FF', font=('Consolas', 10, 'bold'))
+        exec_row.addStretch()
 
-        # ── 执行按钮行 ──
-        exec_row = ttk.Frame(lf)
-        exec_row.pack(fill='x', padx=6, pady=(6, 8))
-        self.exec_btn = ttk.Button(exec_row, text='执行 SQL', style='Accent.TButton',
-                                   command=self._execute_sql)
-        self.exec_btn.pack(side='left')
-        ttk.Button(exec_row, text='导出 CSV', command=self._export_csv).pack(side='left', padx=(6, 0))
-        self.tx_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(exec_row, text='开启事务', variable=self.tx_var,
-                        style='Small.TCheckbutton').pack(side='left', padx=(12, 0))
-        self.copy_btn = ttk.Button(exec_row, text='复制 SQL', command=self._copy_sql)
-        self.copy_btn.pack(side='right')
+        copy_btn = QPushButton('复制 SQL')
+        copy_btn.clicked.connect(self._copy_sql)
+        exec_row.addWidget(copy_btn)
+        sql_ly.addLayout(exec_row)
+        layout.addWidget(sql_group, 1)
 
-    def _build_right(self):
-        rf = self.right_frame
+    def _build_right(self, parent: QWidget):
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(4, 8, 8, 4)
+        layout.setSpacing(4)
 
-        # ── 执行状态栏 ──
-        self.result_bar = ttk.Frame(rf)
-        self.result_bar.pack(fill='x', padx=6, pady=(6, 0))
+        # ── 执行状态 ──
+        stat_row = QHBoxLayout()
+        self.rb_type = QLabel('类型: —')
+        self.rb_elapsed = QLabel('耗时: —')
+        self.rb_rows = QLabel('行数: —')
+        self.rb_status = QLabel('')
+        for lbl in [self.rb_type, self.rb_elapsed, self.rb_rows]:
+            lbl.setStyleSheet(f'color: {MUTED}; font-size: 12px;')
+            stat_row.addWidget(lbl)
+        stat_row.addStretch()
+        stat_row.addWidget(self.rb_status)
+        layout.addLayout(stat_row)
 
-        self.rb_type = ttk.Label(self.result_bar, text='类型: —')
-        self.rb_type.pack(side='left', padx=(0, 16))
-        self.rb_time = ttk.Label(self.result_bar, text='耗时: —')
-        self.rb_time.pack(side='left', padx=(0, 16))
-        self.rb_rows = ttk.Label(self.result_bar, text='行数: —')
-        self.rb_rows.pack(side='left')
-        self.rb_status = ttk.Label(self.result_bar, text='')
-        self.rb_status.pack(side='right')
+        # ── Tab 容器 ──
+        self.tabs = QTabWidget()
+        layout.addWidget(self.tabs, 1)
 
-        # ── Notebook (Tabs) ──
-        self.notebook = ttk.Notebook(rf)
-        self.notebook.pack(fill='both', expand=True, padx=6, pady=(4, 0))
+        # Tab 1: 查询结果
+        self.result_table = QTableWidget()
+        self.result_table.setAlternatingRowColors(True)
+        self.result_table.horizontalHeader().setStretchLastSection(True)
+        self.tabs.addTab(self.result_table, '查询结果')
 
-        # Tab 1: 查询结果表格
-        self.tab_result = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_result, text='查询结果')
-
-        # Treeview + 滚动条
-        tree_frame = ttk.Frame(self.tab_result)
-        tree_frame.pack(fill='both', expand=True)
-
-        self.tree = ttk.Treeview(tree_frame, show='headings')
-        tree_scroll_y = ttk.Scrollbar(tree_frame, orient='vertical', command=self.tree.yview)
-        tree_scroll_x = ttk.Scrollbar(tree_frame, orient='horizontal', command=self.tree.xview)
-        self.tree.configure(yscrollcommand=tree_scroll_y.set, xscrollcommand=tree_scroll_x.set)
-
-        self.tree.grid(row=0, column=0, sticky='nsew')
-        tree_scroll_y.grid(row=0, column=1, sticky='ns')
-        tree_scroll_x.grid(row=1, column=0, sticky='ew')
-        tree_frame.grid_rowconfigure(0, weight=1)
-        tree_frame.grid_columnconfigure(0, weight=1)
-
-        # 翻页按钮
-        page_frame = ttk.Frame(self.tab_result)
-        page_frame.pack(fill='x', pady=4)
-        self.page_label = ttk.Label(page_frame, text='')
-        self.page_label.pack(side='left', padx=6)
-        ttk.Button(page_frame, text='← 上一页', command=self._prev_page).pack(side='left', padx=(6, 2))
-        ttk.Button(page_frame, text='下一页 →', command=self._next_page).pack(side='left', padx=2)
+        # 翻页
+        page_widget = QWidget()
+        page_layout = QHBoxLayout(page_widget)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        self.page_label = QLabel('')
+        self.page_label.setStyleSheet(f'color: {MUTED}; font-size: 11px;')
+        page_layout.addWidget(self.page_label)
+        page_layout.addStretch()
+        prev_btn = QPushButton('← 上一页')
+        prev_btn.setFixedHeight(24)
+        prev_btn.clicked.connect(self._prev_page)
+        page_layout.addWidget(prev_btn)
+        next_btn = QPushButton('下一页 →')
+        next_btn.setFixedHeight(24)
+        next_btn.clicked.connect(self._next_page)
+        page_layout.addWidget(next_btn)
+        layout.addWidget(page_widget)
 
         # Tab 2: 执行日志
-        self.tab_log = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_log, text='执行日志')
-        self.log_text = scrolledtext.ScrolledText(self.tab_log, bg=BG, fg=WHITE, font=FONT,
-                                                   relief='flat', padx=8, pady=6, wrap='word')
-        self.log_text.pack(fill='both', expand=True)
-        self.log_text.config(state='disabled')
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        self.log_text.setFont(QFont('Consolas', 10))
+        self.tabs.addTab(self.log_text, '执行日志')
+        self._show_log('在左侧输入问题，点击「生成 SQL」，然后「执行 SQL」\n查询结果将显示在这里')
 
         # Tab 3: 历史记录
-        self.tab_history = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_history, text='历史记录')
-
-        hist_top = ttk.Frame(self.tab_history)
-        hist_top.pack(fill='x', padx=4, pady=4)
-        ttk.Button(hist_top, text='清除历史', command=self._clear_history).pack(side='right')
-
-        self.history_list = tk.Listbox(self.tab_history, bg=PANEL, fg=WHITE, font=FONT_SM,
-                                       selectbackground=ACCENT, selectforeground=WHITE,
-                                       relief='flat', borderwidth=0, activestyle='none')
-        hist_scroll = ttk.Scrollbar(self.tab_history, orient='vertical', command=self.history_list.yview)
-        self.history_list.configure(yscrollcommand=hist_scroll.set)
-        self.history_list.pack(side='left', fill='both', expand=True)
-        hist_scroll.pack(side='right', fill='y')
-        self.history_list.bind('<Double-Button-1>', self._on_history_click)
-
-        # 空状态
-        self._show_empty()
-
-    def _build_statusbar(self):
-        self.statusbar = ttk.Frame(self.root)
-        self.statusbar.pack(fill='x', side='bottom')
-
-        self.sb_db = ttk.Label(self.statusbar, text='● 检测中...')
-        self.sb_db.pack(side='left', padx=8)
-        self.sb_history = ttk.Label(self.statusbar, text='')
-        self.sb_history.pack(side='right', padx=8)
+        self.history_list = QListWidget()
+        self.history_list.itemDoubleClicked.connect(self._on_history_click)
+        self.tabs.addTab(self.history_list, '历史记录')
 
     # ── 数据加载 ────────────────────────────
     def _load_data(self):
@@ -366,78 +480,36 @@ class App:
         self._refresh_db_combo()
         self._refresh_history()
         self._check_health()
-        # 定时健康检查
-        self.root.after(15000, self._periodic_health)
 
-    def _periodic_health(self):
-        self._check_health()
-        self.root.after(15000, self._periodic_health)
-
-    # ── DB 配置 ─────────────────────────────
     def _refresh_db_combo(self):
-        names = [f"{c.get('name','')} ({c.get('type','mysql')})" for c in DB_CONFIGS]
-        self.db_combo['values'] = names
-        if DB_CONFIGS:
-            self.db_combo.current(0)
-            global CURRENT_DB
-            CURRENT_DB = DB_CONFIGS[0]
+        self.db_combo.clear()
+        for c in _db_configs:
+            self.db_combo.addItem(f"{c['name']} ({c['type']})", c)
+        if _db_configs:
+            self._current_db = _db_configs[0]
 
-    def _on_db_select(self, _e=None):
-        idx = self.db_combo.current()
-        if 0 <= idx < len(DB_CONFIGS):
-            global CURRENT_DB
-            CURRENT_DB = DB_CONFIGS[idx]
+    def _on_db_select(self, idx):
+        if 0 <= idx < len(_db_configs):
+            self._current_db = _db_configs[idx]
 
+    # ── DB 操作 ─────────────────────────────
     def _add_db_dialog(self):
-        dialog = tk.Toplevel(self.root)
-        dialog.title('新增数据库连接')
-        dialog.geometry('420x380')
-        dialog.configure(bg=BG)
-        dialog.transient(self.root)
-        dialog.grab_set()
-
-        fields = [
-            ('名称', 'name', ''),
-            ('类型', 'type', 'mysql'),
-            ('地址', 'host', 'localhost'),
-            ('端口', 'port', '3306'),
-            ('用户名', 'user', 'root'),
-            ('密码', 'password', ''),
-            ('数据库', 'database', 'sqlagent'),
-        ]
-        entries = {}
-        for i, (label, key, default) in enumerate(fields):
-            ttk.Label(dialog, text=label).grid(row=i, column=0, padx=12, pady=6, sticky='e')
-            if key == 'password':
-                e = ttk.Entry(dialog, show='*', width=30)
-            else:
-                e = ttk.Entry(dialog, width=30)
-            e.insert(0, default)
-            e.grid(row=i, column=1, padx=12, pady=6, sticky='w')
-            entries[key] = e
-
-        def save():
-            cfg = {k: e.get() for k, e in entries.items()}
-            cfg['port'] = int(cfg['port']) if cfg['port'].isdigit() else 3306
-            cfg['id'] = datetime.now().strftime('%Y%m%d%H%M%S')
+        dlg = DbConfigDialog(self)
+        if dlg.exec() == QDialog.Accepted:
+            cfg = dlg.get_config()
             if not cfg['name']:
-                messagebox.showwarning('提示', '请输入连接名称')
+                QMessageBox.warning(self, '提示', '请输入连接名称')
                 return
-            DB_CONFIGS.append(cfg)
+            _db_configs.append(cfg)
             save_db_configs()
             self._refresh_db_combo()
-            dialog.destroy()
-
-        btn_frame = ttk.Frame(dialog)
-        btn_frame.grid(row=len(fields), column=0, columnspan=2, pady=16)
-        ttk.Button(btn_frame, text='取消', command=dialog.destroy).pack(side='left', padx=4)
-        ttk.Button(btn_frame, text='保存', style='Accent.TButton', command=save).pack(side='left', padx=4)
 
     def _test_db(self):
-        if not CURRENT_DB:
-            messagebox.showwarning('提示', '请先选择数据库连接')
+        if not self._current_db:
+            QMessageBox.warning(self, '提示', '请先选择数据库连接')
             return
-        self.db_status.config(text='检测中...', foreground=WARNING)
+        self.db_status.setText('检测中...')
+        self.db_status.setStyleSheet(f'color: {WARNING_COLOR}; font-size: 11px;')
 
         def do_test():
             try:
@@ -449,20 +521,22 @@ class App:
 
         def callback(ok):
             if ok:
-                self.db_status.config(text='✓ 连接成功', foreground=SUCCESS)
+                self.db_status.setText('✓ 连接成功')
+                self.db_status.setStyleSheet(f'color: {SUCCESS_COLOR}; font-size: 11px;')
             else:
-                self.db_status.config(text='✗ 连接失败', foreground=DANGER)
+                self.db_status.setText('✗ 连接失败')
+                self.db_status.setStyleSheet(f'color: {DANGER_COLOR}; font-size: 11px;')
 
-        run_async(do_test, callback)
+        self._run_async(do_test, callback)
 
     # ── 生成 SQL ────────────────────────────
     def _generate_sql(self):
-        question = self.input_text.get('1.0', 'end-1c').strip()
+        question = self.input_text.toPlainText().strip()
         if not question:
-            messagebox.showwarning('提示', '请输入问题')
+            QMessageBox.warning(self, '提示', '请输入问题')
             return
-
-        self.gen_btn.config(text='生成中...', state='disabled')
+        self.gen_btn.setText('生成中...')
+        self.gen_btn.setEnabled(False)
 
         def do_generate():
             try:
@@ -473,21 +547,21 @@ class App:
                 return {'error': str(e)}
 
         def callback(resp):
-            self.gen_btn.config(text='生成 SQL', state='normal')
+            self.gen_btn.setText('生成 SQL')
+            self.gen_btn.setEnabled(True)
             sql = resp.get('sql', '')
             if resp.get('error'):
                 sql = f"-- 生成失败: {resp['error']}"
             elif not sql:
                 sql = resp.get('answer', '-- 未生成 SQL')
+            self.sql_text.setPlainText(sql)
+            self._append_log(f"[生成SQL] {question}\n{sql}\n")
 
-            highlight_sql(self.sql_text, sql)
-            self._log(f"[生成SQL] {question}\n{sql}\n")
-
-        run_async(do_generate, callback)
+        self._run_async(do_generate, callback)
 
     # ── 执行 SQL ────────────────────────────
     def _execute_sql(self):
-        sql = self.sql_text.get('1.0', 'end-1c').strip()
+        sql = self.sql_text.toPlainText().strip()
         if not sql or sql.startswith('--'):
             return
 
@@ -496,12 +570,17 @@ class App:
         for kw in DANGER_KW:
             if kw.upper() in upper:
                 if kw == 'DELETE FROM' and 'WHERE' in upper:
-                    continue  # 有 WHERE 就放行
-                if not messagebox.askyesno('⚠️ 高危操作',
-                                           f'检测到高危语句: {kw}\n\n该操作不可逆，确认执行？'):
+                    continue
+                reply = QMessageBox.question(
+                    self, '高危操作',
+                    f'检测到高危语句: {kw}\n\n该操作不可逆，确认执行？',
+                    QMessageBox.Yes | QMessageBox.No
+                )
+                if reply != QMessageBox.Yes:
                     return
 
-        self.exec_btn.config(text='执行中...', state='disabled')
+        self.exec_btn.setText('执行中...')
+        self.exec_btn.setEnabled(False)
         start = datetime.now()
 
         def do_execute():
@@ -518,74 +597,76 @@ class App:
                         '_elapsed': (datetime.now() - start).total_seconds() * 1000}
 
         def callback(resp):
-            self.exec_btn.config(text='执行 SQL', state='normal')
+            self.exec_btn.setText('执行 SQL')
+            self.exec_btn.setEnabled(True)
             elapsed = resp.get('_elapsed', 0)
             is_write = resp.get('_is_write', False)
 
-            # 更新状态栏
             sql_type = 'SELECT'
             if is_write:
                 sql_type = sql.strip().split()[0].upper()
-            self.rb_type.config(text=f'类型: {sql_type}')
-            self.rb_time.config(text=f'耗时: {elapsed:.0f}ms')
+            self.rb_type.setText(f'类型: {sql_type}')
+            self.rb_elapsed.setText(f'耗时: {elapsed:.0f}ms')
 
             if resp.get('success'):
                 data = resp.get('data')
+                row_count = data.get('row_count', 0) if data else 0
+                self.rb_rows.setText(f'行数: {row_count}')
+                self.rb_status.setText('✓ 执行成功')
+                self.rb_status.setStyleSheet(f'color: {SUCCESS_COLOR}; font-weight: bold;')
+
                 if data and data.get('columns'):
-                    self.rb_rows.config(text=f'行数: {data["row_count"]}')
-                    self.rb_status.config(text='✓ 执行成功', foreground=SUCCESS)
                     self._show_table(data)
-                    self.notebook.select(self.tab_result)
+                    self.tabs.setCurrentIndex(0)
                 else:
-                    self.rb_rows.config(text=f'行数: {resp.get("affectedRows", data.get("row_count", 0))}')
-                    self.rb_status.config(text='✓ 执行成功', foreground=SUCCESS)
-                    self._show_log(f'✓ 执行成功\n受影响行数: {resp.get("affectedRows", 0)}\n耗时: {elapsed:.0f}ms')
-                    self.notebook.select(self.tab_log)
+                    self._show_log(f'✓ 执行成功\n受影响行数: {row_count}\n耗时: {elapsed:.0f}ms')
+                    self.tabs.setCurrentIndex(1)
             else:
-                self.rb_rows.config(text='行数: —')
-                self.rb_status.config(text='✗ 执行失败', foreground=DANGER)
+                self.rb_rows.setText('行数: —')
+                self.rb_status.setText('✗ 执行失败')
+                self.rb_status.setStyleSheet(f'color: {DANGER_COLOR}; font-weight: bold;')
                 error = resp.get('error', '未知错误')
                 self._show_log(f'✗ 执行失败\n{error}\n耗时: {elapsed:.0f}ms')
-                self.notebook.select(self.tab_log)
+                self.tabs.setCurrentIndex(1)
 
             # 保存历史
             history = load_history()
             history.append({
-                'sql': sql, 'success': resp.get('success', False),
+                'sql': sql[:200],
+                'success': resp.get('success', False),
                 'elapsed': f'{elapsed:.0f}ms',
                 'time': datetime.now().strftime('%m/%d %H:%M'),
             })
             save_history(history)
             self._refresh_history()
 
-        run_async(do_execute, callback)
+        self._run_async(do_execute, callback)
 
-    # ── 结果表格 ────────────────────────────
-    _rows = []
-    _page = 0
-    PAGE_SIZE = 100
-
-    def _show_table(self, data):
+    # ── 表格展示 ────────────────────────────
+    def _show_table(self, data: Dict):
         self._rows = data['rows']
         self._page = 0
         columns = data['columns']
-        # 清空旧列
-        self.tree['columns'] = columns
-        self.tree['show'] = 'headings'
-        for col in columns:
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=120, minwidth=80)
+
+        self.result_table.setColumnCount(len(columns))
+        self.result_table.setHorizontalHeaderLabels(columns)
+        self.result_table.setRowCount(0)
         self._render_page()
 
     def _render_page(self):
-        self.tree.delete(*self.tree.get_children())
+        self.result_table.setRowCount(0)
         start = self._page * self.PAGE_SIZE
         page_rows = self._rows[start:start + self.PAGE_SIZE]
-        for row in page_rows:
-            self.tree.insert('', 'end', values=[str(v) if v is not None else 'NULL' for v in row])
+        self.result_table.setRowCount(len(page_rows))
+        for r, row in enumerate(page_rows):
+            for c, val in enumerate(row):
+                item = QTableWidgetItem('NULL' if val is None else str(val))
+                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                self.result_table.setItem(r, c, item)
+
         total = len(self._rows)
         pages = max(1, (total + self.PAGE_SIZE - 1) // self.PAGE_SIZE)
-        self.page_label.config(text=f'第 {self._page + 1}/{pages} 页 · 共 {total} 行')
+        self.page_label.setText(f'第 {self._page + 1}/{pages} 页 · 共 {total} 行')
 
     def _prev_page(self):
         if self._page > 0:
@@ -600,75 +681,56 @@ class App:
             self._render_page()
 
     # ── 日志 ────────────────────────────────
-    def _log(self, msg):
-        self.log_text.config(state='normal')
-        self.log_text.insert('end', f'{msg}\n')
-        self.log_text.see('end')
-        self.log_text.config(state='disabled')
+    def _append_log(self, msg: str):
+        self.log_text.append(msg)
 
-    def _show_log(self, msg):
-        self.log_text.config(state='normal')
-        self.log_text.delete('1.0', 'end')
-        self.log_text.insert('1.0', msg)
-        self.log_text.config(state='disabled')
+    def _show_log(self, msg: str):
+        self.log_text.setPlainText(msg)
 
     # ── 历史记录 ────────────────────────────
     def _refresh_history(self):
-        self.history_list.delete(0, 'end')
+        self.history_list.clear()
         history = load_history()
         for h in reversed(history[-50:]):
             status = '✓' if h.get('success') else '✗'
-            label = f"{status} {h.get('time','')} | {h.get('elapsed','')} | {h.get('sql','')[:60]}"
-            self.history_list.insert('end', label)
-        self.sb_history.config(text=f'历史: {len(history)} 条')
+            label = f"{status} {h.get('time','')} | {h.get('elapsed','')} | {h.get('sql','')[:50]}"
+            item = QListWidgetItem(label)
+            item.setData(Qt.UserRole, h)
+            self.history_list.addItem(item)
+        self.sb_history.setText(f'历史: {len(history)} 条')
 
-    def _on_history_click(self, _e):
-        sel = self.history_list.curselection()
-        if not sel:
-            return
-        history = load_history()
-        idx = len(history) - 1 - sel[0]
-        if 0 <= idx < len(history):
-            sql = history[idx].get('sql', '')
-            highlight_sql(self.sql_text, sql)
+    def _on_history_click(self, item: QListWidgetItem):
+        h = item.data(Qt.UserRole)
+        if h and h.get('sql'):
+            self.sql_text.setPlainText(h['sql'])
 
     def _clear_history(self):
-        if messagebox.askyesno('确认', '确定清除所有历史记录？'):
+        reply = QMessageBox.question(self, '确认', '确定清除所有历史记录？')
+        if reply == QMessageBox.Yes:
             save_history([])
             self._refresh_history()
 
-    # ── 空状态 ──────────────────────────────
-    def _show_empty(self):
-        # 在日志 tab 显示引导
-        self._show_log('在左侧输入问题，点击「生成 SQL」，然后「执行 SQL」\n查询结果将显示在这里')
-
     # ── 其他操作 ────────────────────────────
-    def _clear_input(self):
-        self.input_text.delete('1.0', 'end')
-
     def _copy_sql(self):
-        sql = self.sql_text.get('1.0', 'end-1c').strip()
+        sql = self.sql_text.toPlainText().strip()
         if sql and not sql.startswith('-- AI'):
-            self.root.clipboard_clear()
-            self.root.clipboard_append(sql)
-            messagebox.showinfo('提示', 'SQL 已复制到剪贴板')
+            QApplication.clipboard().setText(sql)
+            self.status_bar.showMessage('SQL 已复制到剪贴板', 3000)
 
     def _export_csv(self):
         if not self._rows:
-            messagebox.showwarning('提示', '没有可导出的数据')
+            QMessageBox.warning(self, '提示', '没有可导出的数据')
             return
-        from tkinter import filedialog
-        path = filedialog.asksaveasfilename(defaultextension='.csv',
-                                            filetypes=[('CSV', '*.csv')])
+        path, _ = QFileDialog.getSaveFileName(self, '导出 CSV', '', 'CSV (*.csv)')
         if not path:
             return
-        import csv
-        cols = list(self.tree['columns'])
+        cols = [self.result_table.horizontalHeaderItem(c).text()
+                for c in range(self.result_table.columnCount())]
         with open(path, 'w', newline='', encoding='utf-8-sig') as f:
             w = csv.writer(f)
             w.writerow(cols)
             w.writerows(self._rows)
-        messagebox.showinfo('提示', f'已导出到 {path}')
+        QMessageBox.information(self, '提示', f'已导出到 {path}')
 
     def _check_health(self):
         def do_check():
@@ -680,23 +742,38 @@ class App:
 
         def callback(resp):
             if resp and resp.get('database'):
-                self.sb_db.config(text='● MySQL 已连接', foreground=SUCCESS)
+                self.sb_db.setText('● MySQL 已连接')
+                self.sb_db.setStyleSheet(f'color: {SUCCESS_COLOR};')
             elif resp:
-                self.sb_db.config(text='● MySQL 断开', foreground=WARNING)
+                self.sb_db.setText('● MySQL 断开')
+                self.sb_db.setStyleSheet(f'color: {WARNING_COLOR};')
             else:
-                self.sb_db.config(text='● API 离线', foreground=DANGER)
+                self.sb_db.setText('● API 离线')
+                self.sb_db.setStyleSheet(f'color: {DANGER_COLOR};')
 
-        run_async(do_check, callback)
+        self._run_async(do_check, callback)
 
-    # ── 运行 ────────────────────────────────
-    def run(self):
-        self.root.mainloop()
+    # ── 工具 ────────────────────────────────
+    def _run_async(self, target, callback):
+        worker = ApiWorker(target)
+        worker.finished.connect(callback)
+        worker.start()
+        # 保持引用防止 GC
+        if not hasattr(self, '_workers'):
+            self._workers = []
+        self._workers.append(worker)
 
 
 # ═══════════════════════════════════════════
 # 入口
 # ═══════════════════════════════════════════
-app = App()
+def main():
+    app = QApplication([])
+    app.setStyleSheet(DARK_QSS)
+    window = MainWindow()
+    window.show()
+    app.exec()
+
 
 if __name__ == '__main__':
-    app.run()
+    main()
