@@ -12,16 +12,25 @@ from ..models import ExecuteRequest, ExecuteResponse, QueryRequest, QueryRespons
 
 router = APIRouter(prefix="/api", tags=["query"])
 
-# 全局 Agent 单例（模块加载时创建）
-_agent: Optional[SQLAgent] = None
+# 两套 Agent：生成 SQL 用（不执行），执行 SQL 用
+_query_agent: Optional[SQLAgent] = None
+_exec_agent: Optional[SQLAgent] = None
 
 
-def get_agent() -> SQLAgent:
-    """获取或创建 Agent 单例。"""
-    global _agent
-    if _agent is None:
-        _agent = SQLAgent()
-    return _agent
+def get_query_agent() -> SQLAgent:
+    """获取生成 SQL 的 Agent（只有 schema 工具，不能执行 SQL）。"""
+    global _query_agent
+    if _query_agent is None:
+        _query_agent = SQLAgent(execute_enabled=False)
+    return _query_agent
+
+
+def get_exec_agent() -> SQLAgent:
+    """获取执行 SQL 的 Agent（完整工具集）。"""
+    global _exec_agent
+    if _exec_agent is None:
+        _exec_agent = SQLAgent()
+    return _exec_agent
 
 
 def _extract_sql(output: str) -> Optional[str]:
@@ -57,7 +66,7 @@ async def natural_language_query(req: QueryRequest):
     {"question": "查询数据库中所有表"}
     ```
     """
-    agent = get_agent()
+    agent = get_query_agent()   # ← 只有 schema 工具，不能执行 SQL
     result = agent.run(req.question)
 
     if not result.get("success"):
@@ -107,7 +116,7 @@ async def execute_sql(req: ExecuteRequest):
     {"sql": "SELECT * FROM users LIMIT 5", "read_only": true}
     ```
     """
-    agent = get_agent()
+    agent = get_exec_agent()
     result = agent.db.execute_sql(req.sql, read_only=req.read_only)
 
     return ExecuteResponse(
@@ -125,7 +134,7 @@ async def query_history():
 
     注意: 当前版本使用内存存储，重启后清空。
     """
-    agent = get_agent()
+    agent = get_exec_agent()
     memory = agent._executor.memory
 
     if not memory or not hasattr(memory, "chat_memory"):

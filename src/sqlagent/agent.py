@@ -16,7 +16,7 @@ from rich.console import Console
 from .config import config
 from .database import DatabaseManager
 from .prompts import SQL_AGENT_SYSTEM_PROMPT
-from .tools import create_tools
+from .tools import create_tools, create_query_tools
 
 console = Console()
 
@@ -37,6 +37,7 @@ class SQLAgent:
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
         read_only: bool = True,
+        execute_enabled: bool = True,
     ):
         self.database_url = database_url or config.mysql.url
         self.model = model or config.llm.model
@@ -47,7 +48,7 @@ class SQLAgent:
         # 初始化数据库和 LLM
         self._db = DatabaseManager(self.database_url)
         self._llm = self._create_llm()
-        self._tools = create_tools(self._db)
+        self._tools = create_tools(self._db) if execute_enabled else create_query_tools(self._db)
         self._executor = self._create_executor()
 
     @property
