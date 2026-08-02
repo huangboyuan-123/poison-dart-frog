@@ -44,7 +44,21 @@ class DatabaseManager:
     def engine(self) -> Engine:
         return self._engine
 
-    def get_schema(self) -> List[Dict[str, Any]]:
+    def get_databases(self) -> List[str]:
+        """获取 MySQL 服务器上所有数据库(排除系统库)。"""
+        try:
+            with self._engine.connect() as conn:
+                rows = conn.execute(text(
+                    "SELECT SCHEMA_NAME FROM information_schema.SCHEMATA "
+                    "WHERE SCHEMA_NAME NOT IN "
+                    "('information_schema','mysql','performance_schema','sys') "
+                    "ORDER BY SCHEMA_NAME"
+                )).fetchall()
+                return [r[0] for r in rows]
+        except SQLAlchemyError:
+            return []
+
+    def get_schema(self, database: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         获取当前数据库所有用户表的完整结构信息。
 
@@ -56,8 +70,7 @@ class DatabaseManager:
         """
         try:
             with self._engine.connect() as conn:
-                # 获取当前数据库名
-                db_name = conn.execute(text("SELECT DATABASE()")).scalar()
+                db_name = database or conn.execute(text("SELECT DATABASE()")).scalar()
 
                 # 查询 information_schema 获取所有表和列
                 col_query = text("""
@@ -101,7 +114,7 @@ class DatabaseManager:
         except SQLAlchemyError as e:
             raise RuntimeError(f"获取数据库 Schema 失败: {e}") from e
 
-    def get_table_info(self, table_name: str) -> Optional[Dict[str, Any]]:
+    def get_table_info(self, table_name: str, database: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         获取指定表的详细结构。
 
@@ -111,7 +124,7 @@ class DatabaseManager:
         Returns:
             表结构字典，不存在则返回 None
         """
-        schema = self.get_schema()
+        schema = self.get_schema(database)
         for t in schema:
             if t["table"] == table_name:
                 return t

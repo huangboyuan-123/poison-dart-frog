@@ -537,13 +537,13 @@ class MainWindow(QMainWindow):
 
     # ── Schema 树 ────────────────────────────
     def _load_schema_tree(self):
-        """加载数据库表结构到树控件"""
+        """加载所有数据库 → 表 → 列 到树控件"""
         self.schema_tree.clear()
         self.tree_label.setText('加载中...')
 
         def do_fetch():
             try:
-                r = requests.get(f'{API_BASE}/api/schema', timeout=10)
+                r = requests.get(f'{API_BASE}/api/databases', timeout=10)
                 return r.json()
             except Exception as e:
                 return {'error': str(e)}
@@ -553,76 +553,98 @@ class MainWindow(QMainWindow):
                 self.tree_label.setText('加载失败')
                 return
 
-            db_name = data.get('database', 'unknown')
-            self.tree_label.setText(db_name)
+            dbs = data.get('databases', [])
+            self.tree_label.setText(f'{len(dbs)} 个数据库')
 
-            tables = data.get('tables', [])
-            for t in tables:
-                table_name = t['table']
-                # 创建表节点
-                table_item = QTreeWidgetItem([table_name])
-                table_item.setIcon(0, self.style().standardIcon(
-                    QStyle.SP_DirIcon))  # 用 Qt 内置图标模拟
-                # 添加占位子节点 (用于显示展开箭头)
-                placeholder = QTreeWidgetItem(['...'])
-                table_item.addChild(placeholder)
-                # 存储列信息
-                table_item.setData(0, Qt.UserRole, t.get('columns', []))
-                table_item.setData(0, Qt.UserRole + 1, 'table')
-                self.schema_tree.addTopLevelItem(table_item)
+            for db_name in dbs:
+                db_item = QTreeWidgetItem([f'📁 {db_name}'])
+                db_item.setData(0, Qt.UserRole + 1, 'database')
+                db_item.setData(0, Qt.UserRole + 2, db_name)
+                # 占位符, 展开时加载
+                QTreeWidgetItem(db_item, ['...'])
+                self.schema_tree.addTopLevelItem(db_item)
 
         self._run_async(do_fetch, callback)
 
     def _on_tree_expand(self, item: QTreeWidgetItem):
-        """展开表节点时懒加载列信息"""
-        if item.data(0, Qt.UserRole + 1) != 'table':
-            return
-        # 移除占位符，加载真实列
-        item.takeChildren()
-        columns = item.data(0, Qt.UserRole) or []
-        for col in columns:
-            key_info = ''
-            if col.get('key') == 'PRI':
-                key_info = ' 🔑'
-            elif col.get('key') == 'MUL':
-                key_info = ' 🔗'
-            null = '?' if col.get('nullable') else ''
-            col_text = f"{col['name']}: {col['type']}{null}{key_info}"
-            col_item = QTreeWidgetItem([col_text])
-            col_item.setData(0, Qt.UserRole + 1, 'column')
-            col_item.setForeground(0, QColor(MUTED))
-            item.addChild(col_item)
+        """展开节点时懒加载"""
+        node_type = item.data(0, Qt.UserRole + 1)
+
+        if node_type == 'database':
+            # 加载数据库下的表
+            item.takeChildren()
+            db_name = item.data(0, Qt.UserRole + 2)
+
+            def do_fetch():
+                try:
+                    r = requests.get(f'{API_BASE}/api/schema?database={db_name}', timeout=10)
+                    return r.json()
+                except Exception as e:
+                    return {'error': str(e)}
+
+            def callback(data):
+                if 'error' in data:
+                    return
+                for t in data.get('tables', []):
+                    t_item = QTreeWidgetItem([t['table']])
+                    t_item.setData(0, Qt.UserRole + 1, 'table')
+                    t_item.setData(0, Qt.UserRole + 2, db_name)
+                    t_item.setData(0, Qt.UserRole, t.get('columns', []))
+                    QTreeWidgetItem(t_item, ['...'])  # 占位列
+                    item.addChild(t_item)
+
+            self._run_async(do_fetch, callback)
+
+        elif node_type == 'table':
+            # 加载表的列
+            item.takeChildren()
+            columns = item.data(0, Qt.UserRole) or []
+            for col in columns:
+                key_info = ''
+                if col.get('key') == 'PRI': key_info = ' 🔑'
+                elif col.get('key') == 'MUL': key_info = ' 🔗'
+                null = '?' if col.get('nullable') else ''
+                col_text = f"{col['name']}: {col['type']}{null}{key_info}"
+                col_item = QTreeWidgetItem([col_text])
+                col_item.setData(0, Qt.UserRole + 1, 'column')
+                col_item.setForeground(0, QColor(MUTED))
+                item.addChild(col_item)
 
     def _on_tree_menu(self, pos):
         """右键菜单"""
         item = self.schema_tree.itemAt(pos)
-        if not item or item.data(0, Qt.UserRole + 1) != 'table':
+        if not item:
             return
+        node_type = item.data(0, Qt.UserRole + 1)
 
-        table_name = item.text(0)
-        columns = item.data(0, Qt.UserRole) or []
+        if node_type == 'table':
+            table_name = item.text(0)
+            db_name = item.data(0, Qt.UserRole + 2)
+            columns = item.data(0, Qt.UserRole) or []
 
-        menu = self.schema_tree.parent().createStandardContextMenu() if False else None  # placeholder
+            menu = QMenu(self)
+            act_struct = QAction('查看表结构', self)
+            act_struct.triggered.connect(lambda t=table_name, c=columns: self._show_table_structure(t, c))
+            menu.addAction(act_struct)
 
-        menu = QMenu(self)
+            act_select = QAction(f'SELECT * FROM {table_name}', self)
+            act_select.triggered.connect(lambda t=table_name: self.sql_text.setPlainText(
+                f'SELECT * FROM {t} LIMIT 100;'))
+            menu.addAction(act_select)
 
-        # 查看表结构
-        act_struct = QAction('查看表结构', self)
-        act_struct.triggered.connect(lambda: self._show_table_structure(table_name, columns))
-        menu.addAction(act_struct)
+            act_copy = QAction('复制表名', self)
+            act_copy.triggered.connect(lambda t=table_name: QApplication.clipboard().setText(t))
+            menu.addAction(act_copy)
 
-        # 生成 SELECT *
-        act_select = QAction(f'SELECT * FROM {table_name}', self)
-        act_select.triggered.connect(lambda: self.sql_text.setPlainText(
-            f'SELECT * FROM {table_name} LIMIT 100;'))
-        menu.addAction(act_select)
+            menu.exec(self.schema_tree.mapToGlobal(pos))
 
-        # 复制表名
-        act_copy = QAction('复制表名', self)
-        act_copy.triggered.connect(lambda: QApplication.clipboard().setText(table_name))
-        menu.addAction(act_copy)
-
-        menu.exec(self.schema_tree.mapToGlobal(pos))
+        elif node_type == 'database':
+            db_name = item.data(0, Qt.UserRole + 2)
+            menu = QMenu(self)
+            act_use = QAction(f'复制库名', self)
+            act_use.triggered.connect(lambda d=db_name: QApplication.clipboard().setText(d))
+            menu.addAction(act_use)
+            menu.exec(self.schema_tree.mapToGlobal(pos))
 
     def _show_table_structure(self, table_name: str, columns: list):
         """在右侧表格显示表结构"""
