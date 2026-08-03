@@ -870,8 +870,10 @@ class MainWindow(QMainWindow):
 
         def do_generate():
             try:
+                # 追加提示确保 AI 返回 SQL
+                prompt = question + '\n\n请直接给出SQL语句，不要额外解释。'
                 r = requests.post(f'{API_BASE}/api/query',
-                                  json={'question': question}, timeout=120)
+                                  json={'question': prompt}, timeout=120)
                 return r.json()
             except Exception as e:
                 return {'error': str(e)}
