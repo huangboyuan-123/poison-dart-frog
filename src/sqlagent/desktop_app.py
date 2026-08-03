@@ -12,7 +12,8 @@ from typing import Any, Dict, List, Optional
 
 import requests
 from PySide6 import QtCore
-from PySide6.QtCore import (Qt, QThread, Signal, QRect, QRegularExpression, QSize)
+from PySide6.QtCore import (Qt, QThread, Signal, QRect, QRegularExpression, QSize,
+                              QStringListModel)
 from PySide6.QtGui import (QAction, QColor, QFont, QFontDatabase,
                             QKeySequence, QSyntaxHighlighter,
                             QTextCharFormat, QPalette, QIcon, QAction)
@@ -25,7 +26,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox,
                                 QTabWidget, QTableWidget, QTableWidgetItem,
                                 QTextEdit, QTreeWidget, QTreeWidgetItem,
                                 QVBoxLayout, QWidget, QListWidget,
-                                QListWidgetItem, QGroupBox)
+                                QListWidgetItem, QGroupBox, QCompleter)
 
 # ═══════════════════════════════════════════
 # 配色 & 常量
@@ -292,6 +293,144 @@ class DbConfigDialog(QDialog):
 # ═══════════════════════════════════════════
 # 主窗口
 # ═══════════════════════════════════════════
+# ═══════════════════════════════════════════
+# 表设计器弹窗
+# ═══════════════════════════════════════════
+class TableDesignerDialog(QDialog):
+    """可视化表结构编辑器"""
+    def __init__(self, db_name: str, table_name: str, columns: List[Dict], parent=None):
+        super().__init__(parent)
+        self.db_name = db_name
+        self.table_name = table_name
+        self.orig_columns = columns  # 原始列信息
+        self.setWindowTitle(f'设计表: {db_name}.{table_name}')
+        self.setMinimumSize(700, 400)
+        self._build_ui()
+
+    def _build_ui(self):
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel(f'<b>{self.db_name}.{self.table_name}</b> — 双击单元格编辑'))
+
+        # 可编辑表格
+        self.tbl = QTableWidget()
+        self.tbl.setColumnCount(5)
+        self.tbl.setHorizontalHeaderLabels(['列名', '类型', '可空', '默认值', '键(PRI/UNI/MUL)'])
+        self.tbl.horizontalHeader().setStretchLastSection(True)
+        self._load_columns()
+        layout.addWidget(self.tbl, 1)
+
+        # 按钮
+        btn_row = QHBoxLayout()
+        add_btn = QPushButton('+ 添加列')
+        add_btn.clicked.connect(self._add_column)
+        btn_row.addWidget(add_btn)
+        del_btn = QPushButton('🗑 删除选中列')
+        del_btn.clicked.connect(self._delete_column)
+        btn_row.addWidget(del_btn)
+        btn_row.addStretch()
+        save_btn = QPushButton('保存修改')
+        save_btn.setProperty('accent', True)
+        save_btn.clicked.connect(self._save)
+        btn_row.addWidget(save_btn)
+        cancel_btn = QPushButton('取消')
+        cancel_btn.clicked.connect(self.reject)
+        btn_row.addWidget(cancel_btn)
+        layout.addLayout(btn_row)
+
+    def _load_columns(self):
+        self.tbl.setRowCount(len(self.orig_columns))
+        for r, col in enumerate(self.orig_columns):
+            items = [
+                QTableWidgetItem(col.get('name', '')),
+                QTableWidgetItem(col.get('type', '')),
+                QTableWidgetItem('YES' if col.get('nullable') else 'NO'),
+                QTableWidgetItem(str(col.get('default', '')) if col.get('default') else ''),
+                QTableWidgetItem(col.get('key', '')),
+            ]
+            for c, item in enumerate(items):
+                self.tbl.setItem(r, c, item)
+
+    def _add_column(self):
+        row = self.tbl.rowCount()
+        self.tbl.insertRow(row)
+        defaults = ['new_col', 'VARCHAR(255)', 'YES', '', '']
+        for c, val in enumerate(defaults):
+            self.tbl.setItem(row, c, QTableWidgetItem(val))
+
+    def _delete_column(self):
+        for r in set(i.row() for i in self.tbl.selectedItems()):
+            col_name = self.tbl.item(r, 0).text() if self.tbl.item(r, 0) else ''
+            reply = QMessageBox.question(self, '确认', f'删除列 {col_name}？此操作不可逆！')
+            if reply == QMessageBox.Yes:
+                self.tbl.removeRow(r)
+
+    def _save(self):
+        # 收集当前列定义
+        new_cols = []
+        for r in range(self.tbl.rowCount()):
+            name = self.tbl.item(r, 0).text() if self.tbl.item(r, 0) else ''
+            dtype = self.tbl.item(r, 1).text() if self.tbl.item(r, 1) else ''
+            nullable = (self.tbl.item(r, 2).text() if self.tbl.item(r, 2) else 'YES') == 'YES'
+            default = self.tbl.item(r, 3).text() if self.tbl.item(r, 3) else ''
+            key = self.tbl.item(r, 4).text() if self.tbl.item(r, 4) else ''
+            if name:
+                new_cols.append({'name': name, 'type': dtype, 'nullable': nullable,
+                                 'default': default, 'key': key})
+
+        # 生成 ALTER 语句
+        orig_names = {c['name'] for c in self.orig_columns}
+        new_names = {c['name'] for c in new_cols}
+        added = [c for c in new_cols if c['name'] not in orig_names]
+        removed = [c for c in self.orig_columns if c['name'] not in new_names]
+        modified = [c for c in new_cols if c['name'] in orig_names]
+
+        sqls = []
+        for c in added:
+            null = '' if c['nullable'] else ' NOT NULL'
+            dflt = f" DEFAULT '{c['default']}'" if c['default'] else ''
+            sqls.append(f"ALTER TABLE `{self.db_name}`.`{self.table_name}` ADD COLUMN `{c['name']}` {c['type']}{null}{dflt}")
+
+        for c in removed:
+            sqls.append(f"ALTER TABLE `{self.db_name}`.`{self.table_name}` DROP COLUMN `{c['name']}`")
+
+        for c in modified:
+            orig = next((o for o in self.orig_columns if o['name'] == c['name']), None)
+            if orig and (c['type'] != orig.get('type', '') or
+                         c['nullable'] != orig.get('nullable', True) or
+                         str(c.get('default', '')) != str(orig.get('default', ''))):
+                null = '' if c['nullable'] else ' NOT NULL'
+                dflt = f" DEFAULT '{c['default']}'" if c['default'] else ''
+                sqls.append(f"ALTER TABLE `{self.db_name}`.`{self.table_name}` MODIFY COLUMN `{c['name']}` {c['type']}{null}{dflt}")
+
+        if not sqls:
+            QMessageBox.information(self, '提示', '没有变更')
+            return
+
+        preview = '\n'.join(sqls[:5])
+        if len(sqls) > 5:
+            preview += f'\n... 共 {len(sqls)} 条 ALTER 语句'
+        reply = QMessageBox.question(self, '确认执行', f'将执行:\n{preview}\n\n确定？')
+        if reply != QMessageBox.Yes:
+            return
+
+        # 执行
+        errors = []
+        for s in sqls:
+            try:
+                r = requests.post(f'{API_BASE}/api/execute',
+                                  json={'sql': s, 'read_only': False}, timeout=10).json()
+                if not r.get('success'):
+                    errors.append(f'{s}: {r.get("error")}')
+            except Exception as e:
+                errors.append(f'{s}: {e}')
+
+        if errors:
+            QMessageBox.warning(self, '部分失败', '\n'.join(errors[:5]))
+        else:
+            QMessageBox.information(self, '成功', f'已执行 {len(sqls)} 条 ALTER 语句')
+            self.accept()
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -327,9 +466,12 @@ class MainWindow(QMainWindow):
         file_menu.addAction(act_exit)
 
         tools_menu = menubar.addMenu('工具')
-        act_export_csv = QAction('导出 CSV', self)
-        act_export_csv.triggered.connect(self._export_csv)
-        tools_menu.addAction(act_export_csv)
+        act_export = QAction('导出数据 (CSV/Excel)', self)
+        act_export.triggered.connect(self._export_csv)
+        tools_menu.addAction(act_export)
+        act_import = QAction('导入数据 (CSV/Excel/JSON)', self)
+        act_import.triggered.connect(self._import_data)
+        tools_menu.addAction(act_import)
         tools_menu.addSeparator()
         act_clear_hist = QAction('清除历史记录', self)
         act_clear_hist.triggered.connect(self._clear_history)
@@ -472,9 +614,12 @@ class MainWindow(QMainWindow):
         layout.addLayout(edit_bar)
 
         # 编辑跟踪
-        self._edits: Dict[str, str] = {}  # key: "row_col" → new_value
-        self._current_pk_col = ''
-        self._current_db = ''
+        self._edits: Dict[str, str] = {}
+        # 排序/筛选状态
+        self._sort_col: str = ''
+        self._sort_dir: str = ''  # 'ASC' or 'DESC'
+        self._filter_col: str = ''
+        self._filter_val: str = ''
 
         # 翻页
         pager = QHBoxLayout()
@@ -558,6 +703,13 @@ class MainWindow(QMainWindow):
         sql_ly.addWidget(self.sql_text)
         self.highlighter = SqlHighlighter(self.sql_text.document())
 
+        # SQL 自动补全
+        self.sql_completer = QCompleter([], self.sql_text)
+        self.sql_completer.setCaseSensitivity(Qt.CaseInsensitive)
+        self.sql_completer.setCompletionMode(QCompleter.PopupCompletion)
+        self.sql_completer.setFilterMode(Qt.MatchContains)
+        self.sql_text.setCompleter(self.sql_completer)
+
         exec_row = QHBoxLayout()
         self.exec_btn = QPushButton('执行 SQL')
         self.exec_btn.setProperty('accent', True)
@@ -635,6 +787,8 @@ class MainWindow(QMainWindow):
 
             dbs = data.get('databases', [])
             self.tree_label.setText(f'{len(dbs)} 个数据库')
+            # 更新 SQL 自动补全词表
+            self._update_sql_completions()
 
             for db_name in dbs:
                 db_item = QTreeWidgetItem([db_name])
@@ -657,19 +811,25 @@ class MainWindow(QMainWindow):
         self._load_table_data(db_name, table_name)
 
     def _load_table_data(self, db: str, table: str):
-        """加载表数据 → 新建/切换Tab"""
-        # 先检查是否已有同名Tab
+        """加载表数据 → 新建/切换Tab, 应用排序/筛选"""
         title = f'📋 {table}'
         for i in range(self.data_tabs.count()):
             if self.data_tabs.tabText(i) == title:
                 self.data_tabs.setCurrentIndex(i)
-                return
+                break
+
+        # 构建 SQL (带排序/筛选)
+        sql = f'SELECT * FROM `{db}`.`{table}`'
+        if self._filter_col and self._filter_val:
+            sql += f" WHERE `{self._filter_col}` = '{self._filter_val}'"
+        if self._sort_col:
+            sql += f" ORDER BY `{self._sort_col}` {self._sort_dir or 'ASC'}"
+        sql += ' LIMIT 500'
 
         def do_fetch():
             try:
                 r = requests.post(f'{API_BASE}/api/execute',
-                                  json={'sql': f'SELECT * FROM `{db}`.`{table}` LIMIT 500', 'read_only': True},
-                                  timeout=30)
+                                  json={'sql': sql, 'read_only': True}, timeout=30)
                 return r.json()
             except Exception as e:
                 return {'error': str(e), 'success': False}
@@ -695,6 +855,30 @@ class MainWindow(QMainWindow):
                 idx = self._add_data_tab(title, data['columns'], data['rows'],
                                          sql=f'SELECT * FROM `{db}`.`{table}`',
                                          db_name=db, pk_col=pk_col)
+                # 获取外键信息
+                try:
+                    fk_r = requests.get(
+                        f'{API_BASE}/api/schema/{table}?database={db}', timeout=5).json()
+                    fk_map = {}
+                    for ci, col in enumerate(fk_r.get('columns', [])):
+                        if col.get('key') == 'MUL':
+                            # 查询外键引用 (简化: 同名列推断)
+                            ref_parts = col.get('name', '').rsplit('_', 1)
+                            ref_table = ref_parts[0] if len(ref_parts) > 1 else ''
+                            if ref_table:
+                                fk_map[ci] = (db, ref_table, 'id')
+                    self._tab_data[idx]['fk_map'] = fk_map
+                    # FK列标蓝
+                    tbl = self._current_table()
+                    if tbl and fk_map:
+                        for r in range(tbl.rowCount()):
+                            for c in fk_map:
+                                item = tbl.item(r, c)
+                                if item:
+                                    item.setForeground(QColor('#6CB6FF'))
+                                    item.setToolTip(f'点击跳转到 {fk_map[c][1]}')
+                except Exception:
+                    pass
                 self._render_tab_page(idx)
                 self.rb_rows.setText(f'{data["row_count"]} 行')
             else:
@@ -715,8 +899,12 @@ class MainWindow(QMainWindow):
         table.horizontalHeader().setStretchLastSection(True)
         table.setColumnCount(len(columns))
         table.setHorizontalHeaderLabels(columns)
-        # 允许编辑
+        # 允许编辑 + 表头排序 + FK跳转
         table.cellChanged.connect(self._on_cell_edited)
+        table.cellClicked.connect(self._on_cell_clicked)
+        table.horizontalHeader().sectionClicked.connect(self._on_header_click)
+        table.setContextMenuPolicy(Qt.CustomContextMenu)
+        table.customContextMenuRequested.connect(self._on_table_context_menu)
 
         idx = self.data_tabs.addTab(table, title)
         self.data_tabs.setCurrentIndex(idx)
@@ -724,7 +912,7 @@ class MainWindow(QMainWindow):
         info = {'title': title, 'columns': columns, 'rows': rows_data or [],
                 'page': 0, 'sql': sql, 'is_temp': is_temp,
                 'db_name': db_name, 'table_name': title.replace('📋 ', '').replace('🔍 ', ''),
-                'pk_col': pk_col}
+                'pk_col': pk_col, 'fk_map': {}}  # fk_map: col_index → (ref_db, ref_table, ref_col)
         self._tab_data[idx] = info
         if rows_data:
             self._render_tab_page(idx)
@@ -779,6 +967,84 @@ class MainWindow(QMainWindow):
         elif f'{row}_{col}' in self._edits:
             del self._edits[f'{row}_{col}']
         self._update_edit_buttons()
+
+    # ── 排序 & 筛选 ────────────────────────
+    def _on_cell_clicked(self, row: int, col: int):
+        """点击单元格 — 检查外键跳转"""
+        info = self._current_tab_info()
+        fk_map = info.get('fk_map', {})
+        if col in fk_map:
+            tbl = self._current_table()
+            if not tbl or not tbl.item(row, col):
+                return
+            val = tbl.item(row, col).text()
+            ref_db, ref_table, ref_col = fk_map[col]
+            self._load_table_data(ref_db, ref_table)
+            # 应用筛选跳转到对应行
+            self._filter_col = ref_col
+            self._filter_val = val
+            self._reload_current_tab()
+            self.rb_type.setText(f'FK: {ref_table}.{ref_col} = {val}')
+
+    def _on_header_click(self, col: int):
+        """点击表头切换排序"""
+        info = self._current_tab_info()
+        cols = info.get('columns', [])
+        if col >= len(cols):
+            return
+        col_name = cols[col]
+        if self._sort_col == col_name:
+            self._sort_dir = 'DESC' if self._sort_dir == 'ASC' else 'ASC'
+        else:
+            self._sort_col = col_name
+            self._sort_dir = 'ASC'
+        self._reload_current_tab()
+        self.rb_type.setText(f'排序: {col_name} {self._sort_dir}')
+
+    def _on_table_context_menu(self, pos):
+        """表格右键菜单 — 列筛选"""
+        tbl = self._current_table()
+        if not tbl:
+            return
+        col = tbl.columnAt(pos.x())
+        if col < 0:
+            return
+        info = self._current_tab_info()
+        cols = info.get('columns', [])
+        if col >= len(cols):
+            return
+        col_name = cols[col]
+
+        menu = QMenu(self)
+        act_filter = QAction(f'筛选 "{col_name}" = ...', self)
+        act_filter.triggered.connect(lambda: self._filter_column(col_name))
+        menu.addAction(act_filter)
+
+        act_clear = QAction('清除筛选/排序', self)
+        act_clear.triggered.connect(self._clear_filter_sort)
+        menu.addAction(act_clear)
+
+        menu.exec(tbl.mapToGlobal(pos))
+
+    def _filter_column(self, col_name: str):
+        """弹出筛选输入框"""
+        val, ok = tk.simpledialog.askstring('列筛选', f'{col_name} = ?', parent=self)  # noqa
+        # Use QInputDialog instead
+        from PySide6.QtWidgets import QInputDialog
+        val, ok = QInputDialog.getText(self, '列筛选', f'WHERE {col_name} =')
+        if ok:
+            self._filter_col = col_name
+            self._filter_val = val
+            self._reload_current_tab()
+            self.rb_type.setText(f'筛选: {col_name} = {val}')
+
+    def _clear_filter_sort(self):
+        self._sort_col = ''
+        self._sort_dir = ''
+        self._filter_col = ''
+        self._filter_val = ''
+        self._reload_current_tab()
+        self.rb_type.setText('')
 
     def _update_edit_buttons(self):
         has_edits = bool(self._edits)
@@ -952,6 +1218,77 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, '错误', str(e))
 
+    def _import_data(self):
+        """导入CSV/Excel/JSON到当前表"""
+        info = self._current_tab_info()
+        table_name = info.get('table_name', '')
+        db_name = info.get('db_name', '')
+        if info.get('is_temp') or not table_name:
+            QMessageBox.warning(self, '提示', '请先在A栏点击一个表，打开数据Tab')
+            return
+
+        path, _ = QFileDialog.getOpenFileName(
+            self, '导入数据', '',
+            'All (*.csv *.xlsx *.json);;CSV (*.csv);;Excel (*.xlsx);;JSON (*.json)')
+        if not path:
+            return
+
+        try:
+            rows_to_import = []
+            if path.endswith('.csv'):
+                with open(path, 'r', encoding='utf-8-sig') as f:
+                    reader = csv.reader(f)
+                    header = next(reader, None)
+                    if header:
+                        rows_to_import = [dict(zip(header, row)) for row in reader if row]
+            elif path.endswith('.xlsx'):
+                from openpyxl import load_workbook
+                wb = load_workbook(path)
+                ws = wb.active
+                header = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+                rows_to_import = [
+                    dict(zip(header, [cell.value for cell in row]))
+                    for row in ws.iter_rows(min_row=2) if any(cell.value for cell in row)
+                ]
+            elif path.endswith('.json'):
+                data = json.loads(Path(path).read_text('utf-8'))
+                rows_to_import = data if isinstance(data, list) else [data]
+
+            if not rows_to_import:
+                QMessageBox.warning(self, '提示', '文件中没有数据')
+                return
+
+            # 确认
+            cols_preview = list(rows_to_import[0].keys())[:5]
+            reply = QMessageBox.question(
+                self, '确认导入',
+                f'将导入 {len(rows_to_import)} 行到 {table_name}\n'
+                f'列: {", ".join(cols_preview)}...\n\n确认？')
+            if reply != QMessageBox.Yes:
+                return
+
+            # 批量 INSERT
+            imported = 0
+            errors = []
+            for row in rows_to_import:
+                try:
+                    resp = requests.post(f'{API_BASE}/api/table/insert', json={
+                        'database': db_name, 'table': table_name, 'values': row
+                    }, timeout=10).json()
+                    if resp.get('success'):
+                        imported += 1
+                    else:
+                        errors.append(resp.get('detail', ''))
+                except Exception as e:
+                    errors.append(str(e))
+
+            self._show_log(f'导入完成: {imported} 成功 / {len(errors)} 失败')
+            if errors:
+                self._show_log(f'错误:\n' + '\n'.join(errors[:5]))
+            self._reload_current_tab()
+        except Exception as e:
+            QMessageBox.warning(self, '错误', str(e))
+
     def _reload_current_tab(self):
         """刷新当前标签页数据"""
         info = self._current_tab_info()
@@ -978,6 +1315,31 @@ class MainWindow(QMainWindow):
             self.collapse_btn.setText('▶')
             self.expand_btn.show()
         self._c_collapsed = not self._c_collapsed
+
+    def _update_sql_completions(self):
+        """收集所有表名/列名 + SQL关键字用于自动补全"""
+        words = set()
+        # 收集已展开的表/列名
+        for i in range(self.schema_tree.topLevelItemCount()):
+            db_item = self.schema_tree.topLevelItem(i)
+            for j in range(db_item.childCount()):
+                tbl_item = db_item.child(j)
+                table_name = tbl_item.text(0)
+                words.add(table_name)
+                for k in range(tbl_item.childCount()):
+                    col_item = tbl_item.child(k)
+                    if col_item.text(0) != '...':
+                        col_name = col_item.text(0).split(':')[0]
+                        words.add(col_name)
+        # SQL 关键字
+        words.update(['SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'NOT', 'IN',
+                       'LIKE', 'BETWEEN', 'JOIN', 'LEFT', 'RIGHT', 'INNER', 'ON',
+                       'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT', 'OFFSET',
+                       'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP',
+                       'COUNT', 'SUM', 'AVG', 'MAX', 'MIN', 'DISTINCT', 'AS',
+                       'NULL', 'IS NULL', 'IS NOT NULL', 'DEFAULT', 'PRIMARY KEY',
+                       'LIMIT 100', 'ORDER BY', 'DESC', 'ASC'])
+        self.sql_completer.setModel(QStringListModel(sorted(words)))
 
     def _on_tree_expand(self, item: QTreeWidgetItem):
         """展开节点时懒加载"""
@@ -1045,9 +1407,13 @@ class MainWindow(QMainWindow):
                 f'SELECT * FROM {t} LIMIT 100;'))
             menu.addAction(act_select)
 
-            act_design = QAction('设计表 (DDL)', self)
-            act_design.triggered.connect(lambda t=table_name, d=db_name: self._show_table_ddl(d, t))
+            act_design = QAction('📐 设计表 (可视化)', self)
+            act_design.triggered.connect(lambda t=table_name, d=db_name, c=columns:
+                                         self._open_table_designer(d, t, c))
             menu.addAction(act_design)
+            act_ddl = QAction('📄 查看DDL', self)
+            act_ddl.triggered.connect(lambda t=table_name, d=db_name: self._show_table_ddl(d, t))
+            menu.addAction(act_ddl)
 
             act_copy = QAction('复制表名', self)
             act_copy.triggered.connect(lambda t=table_name: QApplication.clipboard().setText(t))
@@ -1062,6 +1428,14 @@ class MainWindow(QMainWindow):
             act_use.triggered.connect(lambda d=db_name: QApplication.clipboard().setText(d))
             menu.addAction(act_use)
             menu.exec(self.schema_tree.mapToGlobal(pos))
+
+    def _open_table_designer(self, db: str, table: str, columns: list):
+        """打开可视化表设计器"""
+        dlg = TableDesignerDialog(db, table, columns, self)
+        if dlg.exec() == QDialog.Accepted:
+            # 刷新表数据
+            self._reload_current_tab()
+            self._load_schema_tree()
 
     def _show_table_ddl(self, db: str, table: str):
         """显示建表 DDL"""
@@ -1343,20 +1717,43 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage('SQL 已复制到剪贴板', 3000)
 
     def _export_csv(self):
+        """导出当前 Tab 数据 (支持 CSV/Excel)"""
         info = self._current_tab_info()
         rows = info.get('rows', [])
         cols = info.get('columns', [])
         if not rows:
             QMessageBox.warning(self, '提示', '没有可导出的数据')
             return
-        path, _ = QFileDialog.getSaveFileName(self, '导出 CSV', '', 'CSV (*.csv)')
+        path, fmt = QFileDialog.getSaveFileName(
+            self, '导出数据', '', 'Excel (*.xlsx);;CSV (*.csv)')
         if not path:
             return
-        with open(path, 'w', newline='', encoding='utf-8-sig') as f:
-            w = csv.writer(f)
-            w.writerow(cols)
-            w.writerows(rows)
-        QMessageBox.information(self, '提示', f'已导出到 {path}')
+        try:
+            if path.endswith('.xlsx'):
+                from openpyxl import Workbook
+                from openpyxl.styles import Font, PatternFill
+                wb = Workbook()
+                ws = wb.active
+                ws.title = info.get('title', 'Data')[:31]
+                # 表头样式
+                header_font = Font(bold=True, color='FFFFFF')
+                header_fill = PatternFill(start_color='2574FF', end_color='2574FF', fill_type='solid')
+                for c, col_name in enumerate(cols, 1):
+                    cell = ws.cell(row=1, column=c, value=col_name)
+                    cell.font = header_font
+                    cell.fill = header_fill
+                for r, row in enumerate(rows, 2):
+                    for c, val in enumerate(row, 1):
+                        ws.cell(row=r, column=c, value=val)
+                wb.save(path)
+            else:
+                with open(path, 'w', newline='', encoding='utf-8-sig') as f:
+                    w = csv.writer(f)
+                    w.writerow(cols)
+                    w.writerows(rows)
+            QMessageBox.information(self, '提示', f'已导出到 {path}')
+        except Exception as e:
+            QMessageBox.warning(self, '错误', str(e))
 
     def _check_health(self):
         def do_check():
