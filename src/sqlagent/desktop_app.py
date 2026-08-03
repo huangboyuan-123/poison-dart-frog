@@ -847,7 +847,11 @@ class MainWindow(QMainWindow):
                     # 更新本地缓存
                     rows[r][c] = new_val
                 else:
-                    errors.append(f'{col_name}: {resp.get("detail", "失败")}')
+                    detail = resp.get('detail', '失败')
+                    # 提取 MySQL 错误信息
+                    if isinstance(detail, str) and '|' in detail:
+                        detail = detail.split('\n')[-1].strip() if '\n' in detail else detail
+                    errors.append(f'{col_name}={new_val}: {detail}')
             except Exception as e:
                 errors.append(f'{col_name}: {e}')
 
