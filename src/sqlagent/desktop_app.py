@@ -447,6 +447,35 @@ class MainWindow(QMainWindow):
         self.data_tabs.setMovable(True)
         layout.addWidget(self.data_tabs, 1)
 
+        # 编辑工具栏
+        edit_bar = QHBoxLayout()
+        self.save_btn = QPushButton('💾 保存修改')
+        self.save_btn.setFixedHeight(24)
+        self.save_btn.setProperty('accent', True)
+        self.save_btn.clicked.connect(self._save_edits)
+        self.save_btn.setEnabled(False)
+        edit_bar.addWidget(self.save_btn)
+        self.undo_btn = QPushButton('↩ 撤销')
+        self.undo_btn.setFixedHeight(24)
+        self.undo_btn.clicked.connect(self._undo_edits)
+        self.undo_btn.setEnabled(False)
+        edit_bar.addWidget(self.undo_btn)
+        edit_bar.addStretch()
+        add_btn = QPushButton('+ 新增行')
+        add_btn.setFixedHeight(24)
+        add_btn.clicked.connect(self._add_row_dialog)
+        edit_bar.addWidget(add_btn)
+        del_btn = QPushButton('🗑 删除行')
+        del_btn.setFixedHeight(24)
+        del_btn.clicked.connect(self._delete_selected_row)
+        edit_bar.addWidget(del_btn)
+        layout.addLayout(edit_bar)
+
+        # 编辑跟踪
+        self._edits: Dict[str, str] = {}  # key: "row_col" → new_value
+        self._current_pk_col = ''
+        self._current_db = ''
+
         # 翻页
         pager = QHBoxLayout()
         self.page_label = QLabel('')
@@ -652,8 +681,20 @@ class MainWindow(QMainWindow):
             self.rb_status.setStyleSheet('')
             if resp.get('success') and resp.get('data'):
                 data = resp['data']
+                # 获取主键列
+                pk_col = ''
+                try:
+                    schema_r = requests.get(f'{API_BASE}/api/schema/{table}?database={db}', timeout=5).json()
+                    for col in schema_r.get('columns', []):
+                        if col.get('key') == 'PRI':
+                            pk_col = col['name']
+                            break
+                except Exception:
+                    pass
+
                 idx = self._add_data_tab(title, data['columns'], data['rows'],
-                                         sql=f'SELECT * FROM `{db}`.`{table}`')
+                                         sql=f'SELECT * FROM `{db}`.`{table}`',
+                                         db_name=db, pk_col=pk_col)
                 self._render_tab_page(idx)
                 self.rb_rows.setText(f'{data["row_count"]} 行')
             else:
@@ -667,22 +708,28 @@ class MainWindow(QMainWindow):
 
     # ── 数据 Tab 管理 ──────────────────────
     def _add_data_tab(self, title: str, columns: List[str], rows_data: List[List[Any]] = None,
-                      is_temp: bool = False, sql: str = ''):
+                      is_temp: bool = False, sql: str = '', db_name: str = '', pk_col: str = ''):
         """新建数据Tab"""
         table = QTableWidget()
         table.setAlternatingRowColors(True)
         table.horizontalHeader().setStretchLastSection(True)
         table.setColumnCount(len(columns))
         table.setHorizontalHeaderLabels(columns)
+        # 允许编辑
+        table.cellChanged.connect(self._on_cell_edited)
 
         idx = self.data_tabs.addTab(table, title)
         self.data_tabs.setCurrentIndex(idx)
 
         info = {'title': title, 'columns': columns, 'rows': rows_data or [],
-                'page': 0, 'sql': sql, 'is_temp': is_temp}
+                'page': 0, 'sql': sql, 'is_temp': is_temp,
+                'db_name': db_name, 'table_name': title.replace('📋 ', '').replace('🔍 ', ''),
+                'pk_col': pk_col}
         self._tab_data[idx] = info
         if rows_data:
             self._render_tab_page(idx)
+        # 更新编辑按钮状态
+        self._update_edit_buttons()
         return idx
 
     def _close_data_tab(self, idx: int):
@@ -710,6 +757,190 @@ class MainWindow(QMainWindow):
         """获取当前Tab信息"""
         return self._tab_data.get(self.data_tabs.currentIndex(),
                                   {'rows': [], 'page': 0, 'columns': [], 'title': '', 'sql': '', 'is_temp': False})
+
+    # ── 单元格编辑 ─────────────────────────
+    def _on_cell_edited(self, row: int, col: int):
+        """单元格被编辑时记录修改"""
+        tbl = self._current_table()
+        if not tbl:
+            return
+        key = f'{row}_{col}'
+        new_val = tbl.item(row, col).text() if tbl.item(row, col) else ''
+        self._edits[key] = new_val
+        self._update_edit_buttons()
+
+    def _update_edit_buttons(self):
+        has_edits = bool(self._edits)
+        self.save_btn.setEnabled(has_edits)
+        self.undo_btn.setEnabled(has_edits)
+        if has_edits:
+            self.save_btn.setText(f'💾 保存 ({len(self._edits)})')
+        else:
+            self.save_btn.setText('💾 保存修改')
+
+    def _undo_edits(self):
+        """撤销所有编辑"""
+        for key in list(self._edits.keys()):
+            row_str, col_str = key.split('_')
+            r, c = int(row_str), int(col_str)
+            info = self._current_tab_info()
+            rows = info.get('rows', [])
+            if r < len(rows) and c < len(rows[r]):
+                tbl = self._current_table()
+                if tbl and tbl.item(r, c):
+                    tbl.item(r, c).setText(str(rows[r][c]) if rows[r][c] is not None else 'NULL')
+        self._edits.clear()
+        self._update_edit_buttons()
+
+    def _save_edits(self):
+        """保存所有修改到数据库"""
+        if not self._edits:
+            return
+        info = self._current_tab_info()
+        db_name = info.get('db_name', '')
+        table_name = info.get('table_name', '')
+        pk_col = info.get('pk_col', '')
+        rows = info.get('rows', [])
+
+        if not db_name or not table_name:
+            # 尝试从 tab 标题推断
+            title = info.get('title', '')
+            # 标题格式: "📋 users" 但 db_name 应该在 _load_table_data 中传入
+            QMessageBox.warning(self, '提示', '无法确定数据库名，请先刷新表数据')
+            return
+
+        if not pk_col:
+            pk_col = info.get('columns', ['id'])[0]  # 默认第一列是主键
+
+        saved = 0
+        errors = []
+        for key, new_val in self._edits.items():
+            row_str, col_str = key.split('_')
+            r, c = int(row_str), int(col_str)
+            if r >= len(rows):
+                continue
+            col_name = info['columns'][c] if c < len(info.get('columns', [])) else f'col_{c}'
+            pk_val = str(rows[r][info['columns'].index(pk_col)]) if pk_col in info.get('columns', []) else str(r)
+
+            try:
+                resp = requests.post(f'{API_BASE}/api/table/update', json={
+                    'database': db_name, 'table': table_name,
+                    'pk_column': pk_col, 'pk_value': pk_val,
+                    'column': col_name, 'value': new_val,
+                }, timeout=10).json()
+                if resp.get('success'):
+                    saved += 1
+                    # 更新本地缓存
+                    rows[r][c] = new_val
+                else:
+                    errors.append(f'{col_name}: {resp.get("detail", "失败")}')
+            except Exception as e:
+                errors.append(f'{col_name}: {e}')
+
+        self._edits.clear()
+        self._update_edit_buttons()
+        if errors:
+            self.rb_status.setText(f'✗ {len(errors)} 个失败')
+            self.rb_status.setStyleSheet(f'color: {DANGER_COLOR}; font-weight: bold;')
+            self._show_log(f'保存结果: {saved} 成功, {len(errors)} 失败\n' + '\n'.join(errors))
+        else:
+            self.rb_status.setText(f'✓ 已保存 {saved} 处修改')
+            self.rb_status.setStyleSheet(f'color: {SUCCESS_COLOR}; font-weight: bold;')
+            self._render_tab_page()
+
+    def _add_row_dialog(self):
+        """新增行弹窗"""
+        info = self._current_tab_info()
+        if info.get('is_temp'):
+            QMessageBox.warning(self, '提示', '请先打开一个数据表')
+            return
+        cols = info.get('columns', [])
+        if not cols:
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle('新增行')
+        dialog.setMinimumWidth(360)
+        layout = QFormLayout(dialog)
+        entries = {}
+        for col in cols:
+            e = QLineEdit()
+            entries[col] = e
+            layout.addRow(col, e)
+
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(lambda: self._do_insert(info, entries, dialog))
+        btns.rejected.connect(dialog.reject)
+        layout.addRow(btns)
+        dialog.exec()
+
+    def _do_insert(self, info: Dict, entries: Dict[str, QLineEdit], dialog: QDialog):
+        values = {k: e.text() for k, e in entries.items()}
+        db_name = info.get('db_name', '')
+        table_name = info.get('table_name', '')
+        if not db_name or not table_name:
+            return
+        try:
+            resp = requests.post(f'{API_BASE}/api/table/insert', json={
+                'database': db_name, 'table': table_name, 'values': values
+            }, timeout=10).json()
+            if resp.get('success'):
+                dialog.accept()
+                self._show_log(f'✓ 已插入 1 行到 {table_name}')
+                # 刷新当前 tab
+                self._reload_current_tab()
+            else:
+                QMessageBox.warning(self, '错误', resp.get('detail', '插入失败'))
+        except Exception as e:
+            QMessageBox.warning(self, '错误', str(e))
+
+    def _delete_selected_row(self):
+        """删除选中的行"""
+        tbl = self._current_table()
+        if not tbl:
+            return
+        rows = set()
+        for item in tbl.selectedItems():
+            rows.add(item.row())
+        if not rows:
+            QMessageBox.warning(self, '提示', '请先点击要删除的行')
+            return
+        r = list(rows)[0]
+        info = self._current_tab_info()
+        db_name = info.get('db_name', '')
+        table_name = info.get('table_name', '')
+        pk_col = info.get('pk_col', info.get('columns', ['id'])[0])
+        all_rows = info.get('rows', [])
+
+        if not db_name or not table_name or r >= len(all_rows):
+            return
+        pk_idx = info['columns'].index(pk_col) if pk_col in info.get('columns', []) else 0
+        pk_val = str(all_rows[r][pk_idx])
+
+        if not QMessageBox.question(self, '确认删除',
+                                     f'确定删除 {table_name} 中 {pk_col}={pk_val} 的行?'):
+            return
+
+        try:
+            resp = requests.post(f'{API_BASE}/api/table/delete', json={
+                'database': db_name, 'table': table_name,
+                'pk_column': pk_col, 'pk_value': pk_val,
+            }, timeout=10).json()
+            if resp.get('success'):
+                self._show_log(f'✓ 已删除 {table_name} 中 {pk_col}={pk_val} 的行')
+                self._reload_current_tab()
+            else:
+                QMessageBox.warning(self, '错误', resp.get('detail', '删除失败'))
+        except Exception as e:
+            QMessageBox.warning(self, '错误', str(e))
+
+    def _reload_current_tab(self):
+        """刷新当前标签页数据"""
+        info = self._current_tab_info()
+        db_name = info.get('db_name', '')
+        table_name = info.get('table_name', '')
+        if db_name and table_name:
+            self._load_table_data(db_name, table_name)
 
     def _on_tab_changed(self, idx: int):
         info = self._tab_data.get(idx)
@@ -796,6 +1027,10 @@ class MainWindow(QMainWindow):
                 f'SELECT * FROM {t} LIMIT 100;'))
             menu.addAction(act_select)
 
+            act_design = QAction('设计表 (DDL)', self)
+            act_design.triggered.connect(lambda t=table_name, d=db_name: self._show_table_ddl(d, t))
+            menu.addAction(act_design)
+
             act_copy = QAction('复制表名', self)
             act_copy.triggered.connect(lambda t=table_name: QApplication.clipboard().setText(t))
             menu.addAction(act_copy)
@@ -809,6 +1044,25 @@ class MainWindow(QMainWindow):
             act_use.triggered.connect(lambda d=db_name: QApplication.clipboard().setText(d))
             menu.addAction(act_use)
             menu.exec(self.schema_tree.mapToGlobal(pos))
+
+    def _show_table_ddl(self, db: str, table: str):
+        """显示建表 DDL"""
+        def do_fetch():
+            try:
+                r = requests.get(f'{API_BASE}/api/table/ddl?database={db}&table={table}', timeout=10)
+                return r.json()
+            except Exception as e:
+                return {'error': str(e)}
+
+        def callback(resp):
+            if resp.get('ddl'):
+                self._show_log(f'-- 建表 DDL: {db}.{table}\n{resp["ddl"]}')
+                self.tabs.setCurrentIndex(0)
+            else:
+                self._show_log(f'✗ 获取DDL失败: {resp.get("detail", "未知错误")}')
+                self.tabs.setCurrentIndex(0)
+
+        self._run_async(do_fetch, callback)
 
     def _show_table_structure(self, table_name: str, columns: list):
         """右键查看表结构 → 新建Tab"""
