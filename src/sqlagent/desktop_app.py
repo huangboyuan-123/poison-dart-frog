@@ -1281,7 +1281,7 @@ class MainWindow(QMainWindow):
                 if val is None:
                     item.setForeground(QColor(MUTED))
                     item.setToolTip('NULL — 双击输入值')
-                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                # 允许双击编辑（像 Navicat 一样）
                 tbl.setItem(r, c, item)
         total = len(rows)
         pages = max(1, (total + self.PAGE_SIZE - 1) // self.PAGE_SIZE)
