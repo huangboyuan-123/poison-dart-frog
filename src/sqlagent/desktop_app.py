@@ -303,6 +303,8 @@ class MainWindow(QMainWindow):
         self._page = 0
         self.PAGE_SIZE = 100
         self._current_db: Optional[Dict] = None
+        self._c_collapsed = False
+        self._c_saved_width = 0
 
         self._setup_ui()
         self._load_data()
@@ -348,6 +350,7 @@ class MainWindow(QMainWindow):
         panel_a = QWidget()
         panel_b = QWidget()
         panel_c = QWidget()
+        self.panel_c = panel_c  # 保存引用用于折叠
         splitter.addWidget(panel_a)
         splitter.addWidget(panel_b)
         splitter.addWidget(panel_c)
@@ -434,6 +437,12 @@ class MainWindow(QMainWindow):
             top.addWidget(lbl)
         self.rb_status = QLabel('')
         top.addWidget(self.rb_status)
+        top.addStretch()
+        self.expand_btn = QPushButton('▶ 展开AI')
+        self.expand_btn.setFixedHeight(20)
+        self.expand_btn.clicked.connect(self._toggle_panel_c)
+        self.expand_btn.hide()
+        top.addWidget(self.expand_btn)
         layout.addLayout(top)
 
         # 结果表格
@@ -464,8 +473,17 @@ class MainWindow(QMainWindow):
     # ═══ C栏: AI助手 + 日志 ═══
     def _build_panel_c(self, parent: QWidget):
         layout = QVBoxLayout(parent)
-        layout.setContentsMargins(4, 8, 8, 4)
+        layout.setContentsMargins(4, 4, 8, 4)
         layout.setSpacing(6)
+
+        # 折叠按钮
+        toggle_row = QHBoxLayout()
+        toggle_row.addStretch()
+        self.collapse_btn = QPushButton('◀ 隐藏AI')
+        self.collapse_btn.setFixedHeight(20)
+        self.collapse_btn.clicked.connect(self._toggle_panel_c)
+        toggle_row.addWidget(self.collapse_btn)
+        layout.addLayout(toggle_row)
 
         # DB 配置
         db_bar = QHBoxLayout()
@@ -639,6 +657,18 @@ class MainWindow(QMainWindow):
                 self._show_log(f'✗ 加载表 {table} 失败\n{err}')
 
         self._run_async(do_fetch, callback)
+
+    def _toggle_panel_c(self):
+        """折叠/展开 AI 面板 (C栏)"""
+        if self._c_collapsed:
+            self.panel_c.setVisible(True)
+            self.collapse_btn.setText('◀ 隐藏AI')
+            self.expand_btn.hide()
+        else:
+            self.panel_c.setVisible(False)
+            self.collapse_btn.setText('▶')
+            self.expand_btn.show()
+        self._c_collapsed = not self._c_collapsed
 
     def _show_empty_data(self):
         """B栏空状态"""
