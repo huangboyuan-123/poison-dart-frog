@@ -911,17 +911,16 @@ class MainWindow(QMainWindow):
 
                 if data and data.get('columns'):
                     self._show_table(data)
-                    self.tabs.setCurrentIndex(0)
+                    self._show_log(f'✓ 执行成功 · {row_count} 行 · {elapsed:.0f}ms\n结果已展示在 B 栏数据表格中')
                 else:
                     self._show_log(f'✓ 执行成功\n受影响行数: {row_count}\n耗时: {elapsed:.0f}ms')
-                    self.tabs.setCurrentIndex(0)
             else:
                 self.rb_rows.setText('行数: —')
                 self.rb_status.setText('✗ 执行失败')
                 self.rb_status.setStyleSheet(f'color: {DANGER_COLOR}; font-weight: bold;')
                 error = resp.get('error', '未知错误')
                 self._show_log(f'✗ 执行失败\n{error}\n耗时: {elapsed:.0f}ms')
-                self.tabs.setCurrentIndex(0)
+                self.tabs.setCurrentIndex(0)  # 切到日志 tab 显示错误
 
             # 保存历史
             history = load_history()
