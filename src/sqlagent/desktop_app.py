@@ -764,9 +764,20 @@ class MainWindow(QMainWindow):
         tbl = self._current_table()
         if not tbl:
             return
-        key = f'{row}_{col}'
+        info = self._current_tab_info()
+        rows = info.get('rows', [])
+        if row >= len(rows) or col >= len(rows[row]):
+            return
+        # 原始值
+        orig = rows[row][col]
+        orig_str = '' if orig is None else str(orig)
         new_val = tbl.item(row, col).text() if tbl.item(row, col) else ''
-        self._edits[key] = new_val
+        # 只记录实际变更
+        if new_val != orig_str:
+            key = f'{row}_{col}'
+            self._edits[key] = new_val
+        elif f'{row}_{col}' in self._edits:
+            del self._edits[f'{row}_{col}']
         self._update_edit_buttons()
 
     def _update_edit_buttons(self):
@@ -788,7 +799,10 @@ class MainWindow(QMainWindow):
             if r < len(rows) and c < len(rows[r]):
                 tbl = self._current_table()
                 if tbl and tbl.item(r, c):
-                    tbl.item(r, c).setText(str(rows[r][c]) if rows[r][c] is not None else 'NULL')
+                    orig = rows[r][c]
+                    tbl.item(r, c).setText('' if orig is None else str(orig))
+                    if orig is None:
+                        tbl.item(r, c).setForeground(QColor(MUTED))
         self._edits.clear()
         self._update_edit_buttons()
 
@@ -1262,7 +1276,11 @@ class MainWindow(QMainWindow):
         tbl.setRowCount(len(page_rows))
         for r, row in enumerate(page_rows):
             for c, val in enumerate(row):
-                item = QTableWidgetItem('NULL' if val is None else str(val))
+                display = '' if val is None else str(val)
+                item = QTableWidgetItem(display)
+                if val is None:
+                    item.setForeground(QColor(MUTED))
+                    item.setToolTip('NULL — 双击输入值')
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                 tbl.setItem(r, c, item)
         total = len(rows)

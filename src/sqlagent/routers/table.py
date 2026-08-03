@@ -47,9 +47,14 @@ class DeleteRowRequest(BaseModel):
 async def update_row(req: UpdateRowRequest):
     """更新表的一行数据。"""
     agent = get_agent()
+    # 空值/NULL 处理
+    if not req.value or req.value.upper() == 'NULL':
+        val_sql = "NULL"
+    else:
+        val_sql = f"'{req.value}'"
     sql = (
         f"UPDATE `{req.database}`.`{req.table}` "
-        f"SET `{req.column}` = '{req.value}' "
+        f"SET `{req.column}` = {val_sql} "
         f"WHERE `{req.pk_column}` = '{req.pk_value}'"
     )
     result = agent.db.execute_sql(sql, read_only=False)
@@ -63,7 +68,13 @@ async def insert_row(req: InsertRowRequest):
     """插入一行数据。"""
     agent = get_agent()
     cols = ", ".join(f"`{k}`" for k in req.values)
-    vals = ", ".join(f"'{v}'" for v in req.values.values())
+    vals_parts = []
+    for v in req.values.values():
+        if not v or str(v).upper() == 'NULL':
+            vals_parts.append("NULL")
+        else:
+            vals_parts.append(f"'{v}'")
+    vals = ", ".join(vals_parts)
     sql = f"INSERT INTO `{req.database}`.`{req.table}` ({cols}) VALUES ({vals})"
     result = agent.db.execute_sql(sql, read_only=False)
     if not result["success"]:
