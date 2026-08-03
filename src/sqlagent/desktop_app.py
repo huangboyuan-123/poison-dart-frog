@@ -612,7 +612,7 @@ class MainWindow(QMainWindow):
         def do_fetch():
             try:
                 r = requests.post(f'{API_BASE}/api/execute',
-                                  json={'sql': f'SELECT * FROM {table} LIMIT 500', 'read_only': True},
+                                  json={'sql': f'SELECT * FROM `{db}`.`{table}` LIMIT 500', 'read_only': True},
                                   timeout=30)
                 return r.json()
             except Exception as e:
@@ -632,9 +632,11 @@ class MainWindow(QMainWindow):
                 self._render_page()
                 self.rb_rows.setText(f'{data["row_count"]} 行')
             else:
+                err = resp.get('error', '未知错误')
                 self.rb_rows.setText('0 行')
-                self.rb_status.setText('✗ 加载失败')
+                self.rb_status.setText(f'✗ {err}')
                 self.rb_status.setStyleSheet(f'color: {DANGER_COLOR}; font-weight: bold;')
+                self._show_log(f'✗ 加载表 {table} 失败\n{err}')
 
         self._run_async(do_fetch, callback)
 
