@@ -173,14 +173,13 @@ class DatabaseManager:
         Args:
             sql: 要执行的 SQL 语句
             read_only: 是否只读模式（True 时拒绝写操作）
-
-        Returns:
-            {
-                "success": bool,
-                "error": str | None,
-                "data": {"columns": [...], "rows": [[...], ...], "row_count": int} | None
-            }
         """
+        # 预处理: 移除 USE 语句 (REST API 不支持跨请求会话)
+        import re as _re
+        sql = _re.sub(r'USE\s+\w+\s*;', '', sql, flags=_re.IGNORECASE).strip()
+        if not sql:
+            return {"success": False, "error": "SQL 为空（已移除无效的 USE 语句，请使用 database.table 格式）", "data": None}
+
         if read_only and not self._is_read_only(sql):
             return {
                 "success": False,

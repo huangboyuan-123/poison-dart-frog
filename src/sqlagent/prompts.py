@@ -20,6 +20,8 @@ SQL_AGENT_SYSTEM_PROMPT = """你是一个专业的 MySQL 数据库助手 Agent�
 6. 将结果用清晰的中文解释给用户
 
 ## MySQL 语法要点
+- **跨库查询必须用 `database.table` 格式**，不要用 `USE database;`（API 不支持）
+- 示例：`SELECT * FROM mydb.users` 而不是 `USE mydb; SELECT * FROM users;`
 - 使用 `INFORMATION_SCHEMA` 时要用大写
 - 字符串比较默认不区分大小写（取决于 collation）
 - 日期函数：`DATE_SUB()`, `DATE_ADD()`, `DATEDIFF()`, `DATE_FORMAT()`
