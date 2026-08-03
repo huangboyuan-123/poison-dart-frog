@@ -299,8 +299,6 @@ class MainWindow(QMainWindow):
         self.resize(1200, 780)
         self.setMinimumSize(900, 600)
 
-        self._rows: List[List[Any]] = []
-        self._page = 0
         self.PAGE_SIZE = 100
         self._current_db: Optional[Dict] = None
         self._c_collapsed = False
@@ -417,18 +415,14 @@ class MainWindow(QMainWindow):
         conn_row.addWidget(mgr_btn)
         layout.addLayout(conn_row)
 
-    # ═══ B栏: 数据浏览器 ═══
+    # ═══ B栏: 数据浏览器 (多Tab) ═══
     def _build_panel_b(self, parent: QWidget):
         layout = QVBoxLayout(parent)
-        layout.setContentsMargins(4, 8, 4, 4)
-        layout.setSpacing(4)
+        layout.setContentsMargins(2, 4, 4, 4)
+        layout.setSpacing(2)
 
-        # 标题 + 执行状态
+        # 顶部状态行
         top = QHBoxLayout()
-        self.data_title = QLabel('数据浏览')
-        self.data_title.setStyleSheet('font-weight: bold; font-size: 13px;')
-        top.addWidget(self.data_title)
-        top.addStretch()
         self.rb_type = QLabel('')
         self.rb_elapsed = QLabel('')
         self.rb_rows = QLabel('')
@@ -445,11 +439,13 @@ class MainWindow(QMainWindow):
         top.addWidget(self.expand_btn)
         layout.addLayout(top)
 
-        # 结果表格
-        self.result_table = QTableWidget()
-        self.result_table.setAlternatingRowColors(True)
-        self.result_table.horizontalHeader().setStretchLastSection(True)
-        layout.addWidget(self.result_table, 1)
+        # 可关闭的 Tab 容器
+        self.data_tabs = QTabWidget()
+        self.data_tabs.setTabsClosable(True)
+        self.data_tabs.tabCloseRequested.connect(self._close_data_tab)
+        self.data_tabs.currentChanged.connect(self._on_tab_changed)
+        self.data_tabs.setMovable(True)
+        layout.addWidget(self.data_tabs, 1)
 
         # 翻页
         pager = QHBoxLayout()
@@ -467,8 +463,15 @@ class MainWindow(QMainWindow):
         pager.addWidget(pb2)
         layout.addLayout(pager)
 
-        # 空引导
-        self._show_empty_data()
+        # Tab 数据存储: {tab_index: {'title','rows','columns','page','sql'}}
+        self._tab_data: Dict[int, Dict] = {}
+        self._add_data_tab('📋 欢迎', [], ['提示'], is_temp=True)
+        tbl = self._current_table()
+        if tbl:
+            tbl.setRowCount(1)
+            item = QTableWidgetItem('👈 点击左侧表名 或 在右侧执行SQL')
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            tbl.setItem(0, 0, item)
 
     # ═══ C栏: AI助手 + 日志 ═══
     def _build_panel_c(self, parent: QWidget):
@@ -622,11 +625,17 @@ class MainWindow(QMainWindow):
             return
         table_name = item.text(0)
         db_name = item.data(0, Qt.UserRole + 2)
-        self.data_title.setText(f'📋 {table_name}')
         self._load_table_data(db_name, table_name)
 
     def _load_table_data(self, db: str, table: str):
-        """加载指定表的数据到 B 栏"""
+        """加载表数据 → 新建/切换Tab"""
+        # 先检查是否已有同名Tab
+        title = f'📋 {table}'
+        for i in range(self.data_tabs.count()):
+            if self.data_tabs.tabText(i) == title:
+                self.data_tabs.setCurrentIndex(i)
+                return
+
         def do_fetch():
             try:
                 r = requests.post(f'{API_BASE}/api/execute',
@@ -643,11 +652,9 @@ class MainWindow(QMainWindow):
             self.rb_status.setStyleSheet('')
             if resp.get('success') and resp.get('data'):
                 data = resp['data']
-                self._rows = data['rows']
-                self._page = 0
-                self.result_table.setColumnCount(len(data['columns']))
-                self.result_table.setHorizontalHeaderLabels(data['columns'])
-                self._render_page()
+                idx = self._add_data_tab(title, data['columns'], data['rows'],
+                                         sql=f'SELECT * FROM `{db}`.`{table}`')
+                self._render_tab_page(idx)
                 self.rb_rows.setText(f'{data["row_count"]} 行')
             else:
                 err = resp.get('error', '未知错误')
@@ -658,6 +665,59 @@ class MainWindow(QMainWindow):
 
         self._run_async(do_fetch, callback)
 
+    # ── 数据 Tab 管理 ──────────────────────
+    def _add_data_tab(self, title: str, columns: List[str], rows_data: List[List[Any]] = None,
+                      is_temp: bool = False, sql: str = ''):
+        """新建数据Tab"""
+        table = QTableWidget()
+        table.setAlternatingRowColors(True)
+        table.horizontalHeader().setStretchLastSection(True)
+        table.setColumnCount(len(columns))
+        table.setHorizontalHeaderLabels(columns)
+
+        idx = self.data_tabs.addTab(table, title)
+        self.data_tabs.setCurrentIndex(idx)
+
+        info = {'title': title, 'columns': columns, 'rows': rows_data or [],
+                'page': 0, 'sql': sql, 'is_temp': is_temp}
+        self._tab_data[idx] = info
+        if rows_data:
+            self._render_tab_page(idx)
+        return idx
+
+    def _close_data_tab(self, idx: int):
+        """关闭Tab"""
+        if self.data_tabs.count() <= 1:
+            return
+        # 重建 tab_data 映射
+        old_keys = list(self._tab_data.keys())
+        self.data_tabs.removeTab(idx)
+        new_data = {}
+        new_idx = 0
+        for old_key in old_keys:
+            if old_key == idx:
+                continue
+            new_data[new_idx] = self._tab_data[old_key]
+            new_idx += 1
+        self._tab_data = new_data
+
+    def _current_table(self) -> QTableWidget:
+        """获取当前Tab的表格"""
+        w = self.data_tabs.currentWidget()
+        return w if isinstance(w, QTableWidget) else None
+
+    def _current_tab_info(self) -> Dict:
+        """获取当前Tab信息"""
+        return self._tab_data.get(self.data_tabs.currentIndex(),
+                                  {'rows': [], 'page': 0, 'columns': [], 'title': '', 'sql': '', 'is_temp': False})
+
+    def _on_tab_changed(self, idx: int):
+        info = self._tab_data.get(idx)
+        if info and info.get('rows'):
+            self.page_label.setText(
+                f'第 {info["page"]+1}/{max(1, (len(info["rows"])+99)//100)} 页 · 共 {len(info["rows"])} 行')
+
+    # ── 折叠 ────────────────────────────────
     def _toggle_panel_c(self):
         """折叠/展开 AI 面板 (C栏)"""
         if self._c_collapsed:
@@ -669,16 +729,6 @@ class MainWindow(QMainWindow):
             self.collapse_btn.setText('▶')
             self.expand_btn.show()
         self._c_collapsed = not self._c_collapsed
-
-    def _show_empty_data(self):
-        """B栏空状态"""
-        self.result_table.setRowCount(0)
-        self.result_table.setColumnCount(1)
-        self.result_table.setHorizontalHeaderLabels(['提示'])
-        self.result_table.setRowCount(1)
-        item = QTableWidgetItem('👈 点击左侧数据库中的表名浏览数据')
-        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-        self.result_table.setItem(0, 0, item)
 
     def _on_tree_expand(self, item: QTreeWidgetItem):
         """展开节点时懒加载"""
@@ -761,18 +811,14 @@ class MainWindow(QMainWindow):
             menu.exec(self.schema_tree.mapToGlobal(pos))
 
     def _show_table_structure(self, table_name: str, columns: list):
-        """在右侧表格显示表结构"""
-        self._rows = [[c.get('name', ''), c.get('type', ''), c.get('key', ''),
-                       'YES' if c.get('nullable') else 'NO', str(c.get('default', ''))]
-                      for c in columns]
-        self._page = 0
-        self.result_table.setColumnCount(5)
-        self.result_table.setHorizontalHeaderLabels(['字段', '类型', '键', '可空', '默认值'])
-        self._render_page()
-        self.tabs.setCurrentIndex(0)
-        self.rb_type.setText(f'类型: STRUCT')
-        self.rb_elapsed.setText(f'耗时: —')
-        self.rb_rows.setText(f'字段: {len(columns)}')
+        """右键查看表结构 → 新建Tab"""
+        rows = [[c.get('name', ''), c.get('type', ''), c.get('key', ''),
+                 'YES' if c.get('nullable') else 'NO', str(c.get('default', ''))] for c in columns]
+        idx = self._add_data_tab(f'🔍 {table_name}', ['字段', '类型', '键', '可空', '默认值'], rows)
+        self._render_tab_page(idx)
+        self.rb_type.setText(f'结构: {table_name}')
+        self.rb_elapsed.setText('')
+        self.rb_rows.setText(f'{len(columns)} 字段')
         self.rb_status.setText('')
         self.rb_status.setStyleSheet('')
 
@@ -937,41 +983,49 @@ class MainWindow(QMainWindow):
 
     # ── 表格展示 ────────────────────────────
     def _show_table(self, data: Dict):
-        self._rows = data['rows']
-        self._page = 0
-        columns = data['columns']
-        self.data_title.setText('📋 查询结果')
-        self.result_table.setColumnCount(len(columns))
-        self.result_table.setHorizontalHeaderLabels(columns)
-        self.result_table.setRowCount(0)
-        self._render_page()
+        """执行SQL结果 → 新建 查询结果 Tab"""
+        cols = data['columns']
+        rows = data['rows']
+        idx = self._add_data_tab('📋 查询结果', cols, rows, sql='')
+        self._render_tab_page(idx)
 
-    def _render_page(self):
-        self.result_table.setRowCount(0)
-        start = self._page * self.PAGE_SIZE
-        page_rows = self._rows[start:start + self.PAGE_SIZE]
-        self.result_table.setRowCount(len(page_rows))
+    def _render_tab_page(self, tab_idx: int = -1):
+        """渲染指定Tab的当前页"""
+        if tab_idx < 0:
+            tab_idx = self.data_tabs.currentIndex()
+        info = self._tab_data.get(tab_idx)
+        if not info or info.get('is_temp'):
+            return
+        tbl = self._current_table()
+        if not tbl:
+            return
+        tbl.setRowCount(0)
+        start = info['page'] * self.PAGE_SIZE
+        rows = info['rows']
+        page_rows = rows[start:start + self.PAGE_SIZE]
+        tbl.setRowCount(len(page_rows))
         for r, row in enumerate(page_rows):
             for c, val in enumerate(row):
                 item = QTableWidgetItem('NULL' if val is None else str(val))
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                self.result_table.setItem(r, c, item)
-
-        total = len(self._rows)
+                tbl.setItem(r, c, item)
+        total = len(rows)
         pages = max(1, (total + self.PAGE_SIZE - 1) // self.PAGE_SIZE)
-        self.page_label.setText(f'第 {self._page + 1}/{pages} 页 · 共 {total} 行')
+        self.page_label.setText(f'第 {info["page"]+1}/{pages} 页 · 共 {total} 行')
 
     def _prev_page(self):
-        if self._page > 0:
-            self._page -= 1
-            self._render_page()
+        info = self._current_tab_info()
+        if info['page'] > 0:
+            info['page'] -= 1
+            self._render_tab_page()
 
     def _next_page(self):
-        total = len(self._rows)
+        info = self._current_tab_info()
+        total = len(info.get('rows', []))
         pages = max(1, (total + self.PAGE_SIZE - 1) // self.PAGE_SIZE)
-        if self._page < pages - 1:
-            self._page += 1
-            self._render_page()
+        if info['page'] < pages - 1:
+            info['page'] += 1
+            self._render_tab_page()
 
     # ── 日志 ────────────────────────────────
     def _append_log(self, msg: str):
@@ -1011,18 +1065,19 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage('SQL 已复制到剪贴板', 3000)
 
     def _export_csv(self):
-        if not self._rows:
+        info = self._current_tab_info()
+        rows = info.get('rows', [])
+        cols = info.get('columns', [])
+        if not rows:
             QMessageBox.warning(self, '提示', '没有可导出的数据')
             return
         path, _ = QFileDialog.getSaveFileName(self, '导出 CSV', '', 'CSV (*.csv)')
         if not path:
             return
-        cols = [self.result_table.horizontalHeaderItem(c).text()
-                for c in range(self.result_table.columnCount())]
         with open(path, 'w', newline='', encoding='utf-8-sig') as f:
             w = csv.writer(f)
             w.writerow(cols)
-            w.writerows(self._rows)
+            w.writerows(rows)
         QMessageBox.information(self, '提示', f'已导出到 {path}')
 
     def _check_health(self):
