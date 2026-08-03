@@ -15,25 +15,32 @@ def _make_tools(db: DatabaseManager, include_execute: bool) -> list:
     """创建工具集。include_execute=False 时仅生成 SQL 不执行。"""
 
     @tool
-    def list_tables() -> str:
-        """列出数据库中所有的表名。在不确定有哪些表时首先调用。"""
+    def list_tables(database: str = "") -> str:
+        """列出指定数据库(或当前库)中的所有表名。跨库查询时指定 database 参数，如 list_tables(database='mydb')。"""
         try:
-            schema = db.get_schema()
+            schema = db.get_schema(database if database else None)
             if not schema:
                 return "数据库中未找到任何表。"
             table_names = [t["table"] for t in schema]
-            return "数据库中的表:\n" + "\n".join(f"  - {name}" for name in table_names)
+            db_hint = f" ({database})" if database else ""
+            return f"数据库{db_hint}中的表:\n" + "\n".join(f"  - {name}" for name in table_names)
         except Exception as e:
             return f"获取表列表失败: {e}"
 
     @tool
-    def get_table_schema(table_name: str) -> str:
-        """获取指定表的完整结构：列名、类型、是否可空、键信息。"""
+    def get_table_schema(table_name: str, database: str = "") -> str:
+        """获取指定表的完整结构。跨库时指定 database 参数，如 get_table_schema('users', database='mydb')。
+
+        Args:
+            table_name: 表名
+            database: 数据库名(可选, 留空则用当前库)
+        """
         try:
-            info = db.get_table_info(table_name)
+            info = db.get_table_info(table_name, database if database else None)
             if not info:
                 return f"表 '{table_name}' 不存在。"
-            lines = [f"表: {table_name}"]
+            prefix = f"{database}." if database else ""
+            lines = [f"表: {prefix}{table_name}"]
             for col in info["columns"]:
                 null = "NULL" if col["nullable"] else "NOT NULL"
                 key = ""
@@ -49,7 +56,7 @@ def _make_tools(db: DatabaseManager, include_execute: bool) -> list:
 
     @tool
     def execute_query(sql: str) -> str:
-        """执行 SQL 查询并返回结果（仅限 SELECT）。"""
+        """执行 SQL 查询并返回结果（仅限 SELECT）。跨库查询请在SQL中用 database.table 格式。"""
         result = db.execute_sql(sql, read_only=True)
         if not result["success"]:
             return f"查询执行失败: {result['error']}"
