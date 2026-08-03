@@ -21,16 +21,15 @@ class MySQLConfig:
     port: int = field(default_factory=lambda: int(os.getenv("MYSQL_PORT", "3306")))
     user: str = field(default_factory=lambda: os.getenv("MYSQL_USER", "root"))
     password: str = field(default_factory=lambda: os.getenv("MYSQL_PASSWORD", "root123"))
-    database: str = field(default_factory=lambda: os.getenv("MYSQL_DATABASE", "sqlagent"))
+    database: str = field(default_factory=lambda: os.getenv("MYSQL_DATABASE", ""))
 
     @property
     def url(self) -> str:
-        """构建 SQLAlchemy 数据库连接 URL。"""
-        return (
-            f"mysql+pymysql://{self.user}:{self.password}"
-            f"@{self.host}:{self.port}/{self.database}"
-            f"?charset=utf8mb4"
-        )
+        """构建 SQLAlchemy 数据库连接 URL。不指定数据库时连接服务器根级别。"""
+        base = f"mysql+pymysql://{self.user}:{self.password}@{self.host}:{self.port}"
+        if self.database:
+            base += f"/{self.database}"
+        return base + "?charset=utf8mb4"
 
 
 @dataclass

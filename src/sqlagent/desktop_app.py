@@ -268,7 +268,7 @@ class DbConfigDialog(QDialog):
         self.pass_edit.setEchoMode(QLineEdit.Password)
         layout.addRow('密码:', self.pass_edit)
 
-        self.db_edit = QLineEdit('sqlagent')
+        self.db_edit = QLineEdit('')
         layout.addRow('数据库:', self.db_edit)
 
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
