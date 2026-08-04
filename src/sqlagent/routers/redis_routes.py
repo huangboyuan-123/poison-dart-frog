@@ -5,20 +5,28 @@ Redis 路由 — 键浏览、值读写、键删除。
 import os
 from typing import Optional
 
-import redis
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/redis", tags=["redis"])
 
-# Redis 连接 (从环境变量读取)
-_redis_client: Optional[redis.Redis] = None
+# Redis 连接 (延迟导入)
+_redis_client = None
 
 
-def get_redis() -> redis.Redis:
+def _get_redis_module():
+    try:
+        import redis as _redis
+        return _redis
+    except ImportError:
+        raise HTTPException(status_code=500, detail="redis-py 未安装，请执行 pip install redis")
+
+
+def get_redis():
     global _redis_client
     if _redis_client is None:
-        _redis_client = redis.Redis(
+        r = _get_redis_module()
+        _redis_client = r.Redis(
             host=os.getenv("REDIS_HOST", "localhost"),
             port=int(os.getenv("REDIS_PORT", "6379")),
             password=os.getenv("REDIS_PASSWORD", "") or None,
