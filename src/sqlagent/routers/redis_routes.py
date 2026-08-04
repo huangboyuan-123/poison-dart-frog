@@ -120,3 +120,68 @@ async def delete_key(key: str):
         return {"ok": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class RedisQueryRequest(BaseModel):
+    question: str
+
+
+class RedisExecuteRequest(BaseModel):
+    command: str
+
+
+@router.post("/query")
+async def redis_query(req: RedisQueryRequest):
+    """AI 自然语言 → Redis 命令"""
+    try:
+        import os as _os
+        api_key = _os.getenv("DEEPSEEK_API_KEY") or _os.getenv("OPENAI_API_KEY", "")
+        if not api_key:
+            return {"error": "未配置 LLM API Key", "command": "", "answer": ""}
+
+        from langchain_openai import ChatOpenAI
+        from langchain.prompts import ChatPromptTemplate
+
+        llm = ChatOpenAI(
+            model=_os.getenv("LLM_MODEL", "deepseek-chat"),
+            api_key=api_key,
+            base_url=_os.getenv("LLM_BASE_URL", "https://api.deepseek.com/v1"),
+            temperature=0,
+        )
+
+        prompt = ChatPromptTemplate.from_messages([(
+            "system",
+            "你是 Redis 专家。用户用中文描述需求，你输出对应的 Redis 命令。"
+            "只输出命令，每行一个，不要解释。支持: GET/SET/DEL/EXISTS/EXPIRE/TTL"
+            "/KEYS/SCAN/HGET/HSET/HGETALL/LPUSH/RPUSH/LRANGE/SADD/SMEMBERS/ZADD/ZRANGE等。"
+        ), ("human", "{question}")])
+
+        chain = prompt | llm
+        response = chain.invoke({"question": req.question})
+        return {"command": response.content, "answer": response.content}
+    except Exception as e:
+        return {"error": str(e), "command": "", "answer": ""}
+
+
+@router.post("/execute")
+async def redis_execute(req: RedisExecuteRequest):
+    """执行 Redis 命令"""
+    try:
+        r = get_redis()
+        # 解析并执行命令 (简单实现: 按行分割)
+        results = []
+        for line in req.command.strip().split('\n'):
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            parts = line.split()
+            cmd = parts[0].upper()
+            args = parts[1:]
+            try:
+                result = r.execute_command(cmd, *args)
+                results.append(f'{cmd}: {result}')
+            except Exception as e:
+                results.append(f'{cmd}: ERROR - {e}')
+        return {"ok": True, "result": '\n'.join(results)}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
