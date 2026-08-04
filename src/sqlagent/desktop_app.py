@@ -328,7 +328,8 @@ class TableDesignerDialog(QDialog):
         del_btn.clicked.connect(self._delete_column)
         btn_row.addWidget(del_btn)
         btn_row.addStretch()
-        save_btn = QPushButton('保存修改')
+        save_icon = QIcon(str(ICONS_DIR / 'diskette.png'))
+        save_btn = QPushButton(save_icon, '保存修改')
         save_btn.setProperty('accent', True)
         save_btn.clicked.connect(self._save)
         btn_row.addWidget(save_btn)
@@ -690,7 +691,8 @@ class MainWindow(QMainWindow):
 
         # 编辑工具栏
         edit_bar = QHBoxLayout()
-        self.save_btn = QPushButton('💾 保存修改')
+        save_icon = QIcon(str(ICONS_DIR / 'diskette.png'))
+        self.save_btn = QPushButton(save_icon, '保存修改')
         self.save_btn.setFixedHeight(24)
         self.save_btn.setProperty('accent', True)
         self.save_btn.clicked.connect(self._save_edits)
@@ -738,11 +740,11 @@ class MainWindow(QMainWindow):
 
         # Tab 数据存储: {tab_index: {'title','rows','columns','page','sql'}}
         self._tab_data: Dict[int, Dict] = {}
-        self._add_data_tab('📋 欢迎', [], ['提示'], is_temp=True)
+        self._add_data_tab(' 欢迎', [], ['提示'], is_temp=True)
         tbl = self._current_table()
         if tbl:
             tbl.setRowCount(1)
-            item = QTableWidgetItem('👈 点击左侧表名 或 在右侧执行SQL')
+            item = QTableWidgetItem(' 点击左侧表名 或 在右侧执行SQL')
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             tbl.setItem(0, 0, item)
 
@@ -894,7 +896,8 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.redis_value_text, 1)
 
         save_row = QHBoxLayout()
-        self.redis_save_btn = QPushButton('保存修改')
+        save_icon = QIcon(str(ICONS_DIR / 'diskette.png'))
+        self.redis_save_btn = QPushButton(save_icon, '保存修改')
         self.redis_save_btn.setProperty('accent', True)
         self.redis_save_btn.clicked.connect(self._save_redis_value)
         self.redis_save_btn.setEnabled(False)
@@ -1172,7 +1175,7 @@ class MainWindow(QMainWindow):
 
     def _load_table_data(self, db: str, table: str):
         """加载表数据 → 新建/切换Tab, 应用排序/筛选"""
-        title = f'📋 {table}'
+        title = f' {table}'
         for i in range(self.data_tabs.count()):
             if self.data_tabs.tabText(i) == title:
                 self.data_tabs.setCurrentIndex(i)
@@ -1411,9 +1414,9 @@ class MainWindow(QMainWindow):
         self.save_btn.setEnabled(has_edits)
         self.undo_btn.setEnabled(has_edits)
         if has_edits:
-            self.save_btn.setText(f'💾 保存 ({len(self._edits)})')
+            self.save_btn.setText(f'保存 ({len(self._edits)})')
         else:
-            self.save_btn.setText('💾 保存修改')
+            self.save_btn.setText('保存修改')
 
     def _undo_edits(self):
         """撤销所有编辑"""
@@ -1445,7 +1448,7 @@ class MainWindow(QMainWindow):
         if not db_name or not table_name:
             # 尝试从 tab 标题推断
             title = info.get('title', '')
-            # 标题格式: "📋 users" 但 db_name 应该在 _load_table_data 中传入
+            # 标题格式: " users" 但 db_name 应该在 _load_table_data 中传入
             QMessageBox.warning(self, '提示', '无法确定数据库名，请先刷新表数据')
             return
 
@@ -1994,7 +1997,7 @@ class MainWindow(QMainWindow):
         """执行SQL结果 → 新建 查询结果 Tab"""
         cols = data['columns']
         rows = data['rows']
-        idx = self._add_data_tab('📋 查询结果', cols, rows, sql='')
+        idx = self._add_data_tab(' 查询结果', cols, rows, sql='')
         self._render_tab_page(idx)
 
     def _render_tab_page(self, tab_idx: int = -1):
