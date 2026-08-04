@@ -135,9 +135,29 @@ async def redis_query(req: RedisQueryRequest):
     """AI 自然语言 → Redis 命令"""
     try:
         import os as _os
+        import re as _re
         api_key = _os.getenv("DEEPSEEK_API_KEY") or _os.getenv("OPENAI_API_KEY", "")
         if not api_key:
             return {"error": "未配置 LLM API Key", "command": "", "answer": ""}
+
+        # 提取问题中提到的 key 并查询其类型
+        key_context = ""
+        try:
+            r = get_redis()
+            # 简单提取可能的 key 名称
+            key_pattern = r'\b([a-zA-Z_][a-zA-Z0-9_:]*)\b'
+            potential_keys = _re.findall(key_pattern, req.question)
+            for k in potential_keys[:3]:  # 最多查3个
+                t = r.type(k)
+                if t != 'none':
+                    if t == 'string':
+                        val = r.get(k)
+                        key_context += f"\n键 '{k}': 类型={t}, 值={val}"
+                    elif t == 'hash':
+                        val = r.hgetall(k)
+                        key_context += f"\n键 '{k}': 类型=hash, 字段={val}"
+        except Exception:
+            pass
 
         from langchain_openai import ChatOpenAI
         from langchain.prompts import ChatPromptTemplate
@@ -149,21 +169,23 @@ async def redis_query(req: RedisQueryRequest):
             temperature=0,
         )
 
+        human_msg = req.question
+        if key_context:
+            human_msg = f"当前 Redis 状态:{key_context}\n\n用户问题: {req.question}"
+
         prompt = ChatPromptTemplate.from_messages([(
             "system",
             "你是 Redis 专家。用户用中文描述需求，你输出对应的 Redis 命令。"
             "只输出命令，每行一个，不要解释。\n\n"
             "重要规则:\n"
-            "- 修改 Hash 字段用 HSET key field value (不是 SET)\n"
-            "- 修改 String 用 SET key value\n"
-            "- 先 GET 或 HGETALL 查看数据类型，再选择正确的命令\n"
-            "- 如果不知道类型，先用 TYPE key 查看\n\n"
-            "支持: GET/SET/DEL/TYPE/EXISTS/EXPIRE/TTL/KEYS/SCAN/"
-            "HGET/HSET/HGETALL/HDEL/LPUSH/RPUSH/LRANGE/SADD/SMEMBERS/ZADD/ZRANGE"
+            "- Hash 类型用 HSET key field value, HGET key field, HGETALL key\n"
+            "- String 类型用 SET key value, GET key\n"
+            "- 根据提供的键类型信息选择正确的命令\n"
+            "- 如果不知道类型，先用 TYPE key 查看\n"
         ), ("human", "{question}")])
 
         chain = prompt | llm
-        response = chain.invoke({"question": req.question})
+        response = chain.invoke({"question": human_msg})
         return {"command": response.content, "answer": response.content}
     except Exception as e:
         return {"error": str(e), "command": "", "answer": ""}
