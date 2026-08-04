@@ -193,10 +193,9 @@ async def redis_query(req: RedisQueryRequest):
 
 @router.post("/execute")
 async def redis_execute(req: RedisExecuteRequest):
-    """执行 Redis 命令"""
+    """执行 Redis 命令（带类型检查）"""
     try:
         r = get_redis()
-        # 解析并执行命令 (简单实现: 按行分割)
         results = []
         for line in req.command.strip().split('\n'):
             line = line.strip()
@@ -205,6 +204,21 @@ async def redis_execute(req: RedisExecuteRequest):
             parts = line.split()
             cmd = parts[0].upper()
             args = parts[1:]
+
+            # 类型敏感命令：先检查 key 类型
+            type_sensitive = {'HGET', 'HSET', 'HGETALL', 'HDEL', 'LPUSH', 'RPUSH',
+                              'LRANGE', 'SADD', 'SMEMBERS', 'ZADD', 'ZRANGE'}
+            if cmd in type_sensitive and args:
+                key = args[0]
+                t = r.type(key)
+                expected = {'HGET': 'hash', 'HSET': 'hash', 'HGETALL': 'hash', 'HDEL': 'hash',
+                            'LPUSH': 'list', 'RPUSH': 'list', 'LRANGE': 'list',
+                            'SADD': 'set', 'SMEMBERS': 'set',
+                            'ZADD': 'zset', 'ZRANGE': 'zset'}.get(cmd)
+                if expected and t != expected and t != 'none':
+                    results.append(f'{cmd}: 类型错误 — {key} 是 {t} 类型, 但 {cmd} 需要 {expected}')
+                    continue
+
             try:
                 result = r.execute_command(cmd, *args)
                 results.append(f'{cmd}: {result}')
