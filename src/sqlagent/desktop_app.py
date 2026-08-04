@@ -18,8 +18,9 @@ from PySide6.QtGui import (QAction, QColor, QFont, QFontDatabase,
                             QTextCharFormat, QPalette, QIcon, QAction)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox,
                                 QDialog, QDialogButtonBox, QFileDialog,
-                                QFormLayout, QHBoxLayout, QHeaderView, QLabel,
-                                QLineEdit, QMainWindow, QMenu, QMenuBar, QMessageBox,
+                                QFormLayout, QFrame, QHBoxLayout, QHeaderView,
+                                QLabel, QLineEdit, QMainWindow, QMenu, QMenuBar,
+                                QMessageBox,
                                 QPlainTextEdit, QPushButton, QSizePolicy,
                                 QSpacerItem, QSplitter, QStatusBar, QStyle,
                                 QTabWidget, QTableWidget, QTableWidgetItem,
@@ -506,52 +507,48 @@ class MainWindow(QMainWindow):
         cards.setAlignment(Qt.AlignCenter)
         cards.setSpacing(30)
 
-        # MySQL 卡片
-        mysql_card = QPushButton()
-        mysql_card.setFixedSize(200, 240)
+        # MySQL 卡片 (用 QFrame 代替 QPushButton 避免文字截断)
+        mysql_card = QFrame()
+        mysql_card.setFixedSize(220, 280)
+        mysql_card.setCursor(Qt.CursorShape.PointingHandCursor)
         mysql_card.setStyleSheet(f"""
-            QPushButton {{ background: {BG}; border: 2px solid rgba(37,116,255,0.2); border-radius: 12px; }}
-            QPushButton:hover {{ border-color: #2574FF; background: #272B33; }}
+            QFrame {{ background: {BG}; border: 2px solid rgba(37,116,255,0.2); border-radius: 12px; }}
+            QFrame:hover {{ border-color: #2574FF; background: #272B33; }}
         """)
-        mysql_card.clicked.connect(lambda: self._switch_workspace('mysql'))
-        mysql_layout = QVBoxLayout(mysql_card)
-        mysql_layout.setAlignment(Qt.AlignCenter)
-        mysql_icon = QLabel('🐬')
-        mysql_icon.setAlignment(Qt.AlignCenter)
-        mysql_icon.setStyleSheet('font-size: 48px;')
-        mysql_layout.addWidget(mysql_icon)
-        mysql_label = QLabel('MySQL')
-        mysql_label.setAlignment(Qt.AlignCenter)
-        mysql_label.setStyleSheet('font-size: 18px; font-weight: bold; color: #E8E8E8;')
-        mysql_layout.addWidget(mysql_label)
-        mysql_desc = QLabel('关系型数据库\n表结构 · SQL查询 · 数据编辑')
-        mysql_desc.setAlignment(Qt.AlignCenter)
-        mysql_desc.setStyleSheet(f'font-size: 11px; color: {MUTED};')
-        mysql_layout.addWidget(mysql_desc)
+        mysql_card.mousePressEvent = lambda e: self._switch_workspace('mysql')
+        ml = QVBoxLayout(mysql_card)
+        ml.setAlignment(Qt.AlignCenter)
+        ml.setSpacing(8)
+        mi = QLabel('🐬'); mi.setAlignment(Qt.AlignCenter); mi.setStyleSheet('font-size: 56px; border:none;')
+        ml.addWidget(mi)
+        mt = QLabel('MySQL'); mt.setAlignment(Qt.AlignCenter)
+        mt.setStyleSheet('font-size: 20px; font-weight: bold; color: #E8E8E8; border:none;')
+        ml.addWidget(mt)
+        md = QLabel('关系型数据库\n表结构 · SQL查询 · 数据编辑'); md.setAlignment(Qt.AlignCenter)
+        md.setStyleSheet(f'font-size: 12px; color: {MUTED}; border:none;')
+        ml.addWidget(md)
         cards.addWidget(mysql_card)
 
         # Redis 卡片
-        redis_card = QPushButton()
-        redis_card.setFixedSize(200, 240)
+        redis_card = QFrame()
+        redis_card.setFixedSize(220, 280)
+        redis_card.setCursor(Qt.CursorShape.PointingHandCursor)
         redis_card.setStyleSheet(f"""
-            QPushButton {{ background: {BG}; border: 2px solid rgba(220,50,50,0.2); border-radius: 12px; }}
-            QPushButton:hover {{ border-color: #DC3232; background: #272B33; }}
+            QFrame {{ background: {BG}; border: 2px solid rgba(220,50,50,0.2); border-radius: 12px; }}
+            QFrame:hover {{ border-color: #DC3232; background: #272B33; }}
         """)
-        redis_card.clicked.connect(lambda: self._switch_workspace('redis'))
-        redis_layout = QVBoxLayout(redis_card)
-        redis_layout.setAlignment(Qt.AlignCenter)
-        redis_icon = QLabel('🔴')
-        redis_icon.setAlignment(Qt.AlignCenter)
-        redis_icon.setStyleSheet('font-size: 48px;')
-        redis_layout.addWidget(redis_icon)
-        redis_label = QLabel('Redis')
-        redis_label.setAlignment(Qt.AlignCenter)
-        redis_label.setStyleSheet('font-size: 18px; font-weight: bold; color: #E8E8E8;')
-        redis_layout.addWidget(redis_label)
-        redis_desc = QLabel('键值数据库\n键浏览 · 值查看 · 缓存管理')
-        redis_desc.setAlignment(Qt.AlignCenter)
-        redis_desc.setStyleSheet(f'font-size: 11px; color: {MUTED};')
-        redis_layout.addWidget(redis_desc)
+        redis_card.mousePressEvent = lambda e: self._switch_workspace('redis')
+        rl = QVBoxLayout(redis_card)
+        rl.setAlignment(Qt.AlignCenter)
+        rl.setSpacing(8)
+        ri = QLabel('🔴'); ri.setAlignment(Qt.AlignCenter); ri.setStyleSheet('font-size: 56px; border:none;')
+        rl.addWidget(ri)
+        rt = QLabel('Redis'); rt.setAlignment(Qt.AlignCenter)
+        rt.setStyleSheet('font-size: 20px; font-weight: bold; color: #E8E8E8; border:none;')
+        rl.addWidget(rt)
+        rd = QLabel('键值数据库\n键浏览 · 值查看 · 缓存管理'); rd.setAlignment(Qt.AlignCenter)
+        rd.setStyleSheet(f'font-size: 12px; color: {MUTED}; border:none;')
+        rl.addWidget(rd)
         cards.addWidget(redis_card)
 
         home_layout.addLayout(cards)
