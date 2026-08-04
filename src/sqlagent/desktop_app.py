@@ -693,10 +693,10 @@ class MainWindow(QMainWindow):
         # SQL 预览
         sql_group = QGroupBox('SQL 预览')
         sql_ly = QVBoxLayout(sql_group)
-        self.sql_text = QPlainTextEdit()
+        self.sql_text = QTextEdit()
         self.sql_text.setPlaceholderText('-- AI 生成的 SQL 将显示在这里')
         self.sql_text.setReadOnly(True)
-        self.sql_text.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.sql_text.setLineWrapMode(QTextEdit.NoWrap)
         font = QFont('Consolas', 10)
         font.setStyleHint(QFont.Monospace)
         self.sql_text.setFont(font)
