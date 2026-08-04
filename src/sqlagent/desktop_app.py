@@ -594,12 +594,13 @@ class MainWindow(QMainWindow):
         redis_ws_layout.addWidget(redis_home_btn)
 
         redis_splitter = QSplitter(Qt.Horizontal)
-        ra = QWidget(); rb = QWidget()
-        redis_splitter.addWidget(ra); redis_splitter.addWidget(rb)
-        redis_splitter.setStretchFactor(0, 0); redis_splitter.setStretchFactor(1, 1)
+        ra = QWidget(); rb = QWidget(); rc = QWidget()
+        redis_splitter.addWidget(ra); redis_splitter.addWidget(rb); redis_splitter.addWidget(rc)
+        redis_splitter.setStretchFactor(0, 0); redis_splitter.setStretchFactor(1, 35); redis_splitter.setStretchFactor(2, 65)
         redis_splitter.setHandleWidth(4); ra.setFixedWidth(250)
         self._build_redis_panel_a(ra)
         self._build_redis_panel_b(rb)
+        self._build_redis_panel_c(rc)
         redis_ws_layout.addWidget(redis_splitter, 1)
         self.stack.addWidget(redis_ws)  # index 2
 
@@ -974,6 +975,102 @@ class MainWindow(QMainWindow):
             self.redis_value_text.setReadOnly(False)
             self.redis_save_btn.setEnabled(True)
             self.redis_delete_btn.setEnabled(True)
+
+        self._run_async(do_fetch, callback)
+
+    # ═══ Redis Panel C: AI 助手 ═══
+    def _build_redis_panel_c(self, parent: QWidget):
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(4, 8, 8, 4)
+        layout.setSpacing(6)
+
+        nl_group = QGroupBox('Redis 自然语言')
+        nl_ly = QVBoxLayout(nl_group)
+        self.redis_input = QPlainTextEdit()
+        self.redis_input.setPlaceholderText('用中文描述 Redis 操作...\n例: 查看所有user:开头的键、设置缓存key过期时间')
+        self.redis_input.setMaximumHeight(80)
+        nl_ly.addWidget(self.redis_input)
+        btn_row = QHBoxLayout()
+        self.redis_gen_btn = QPushButton('生成命令')
+        self.redis_gen_btn.setProperty('accent', True)
+        self.redis_gen_btn.clicked.connect(self._redis_generate)
+        btn_row.addWidget(self.redis_gen_btn)
+        btn_row.addWidget(QPushButton('清空', clicked=lambda: self.redis_input.clear()))
+        btn_row.addStretch()
+        nl_ly.addLayout(btn_row)
+        layout.addWidget(nl_group)
+
+        cmd_group = QGroupBox('Redis 命令预览')
+        cmd_ly = QVBoxLayout(cmd_group)
+        self.redis_cmd_text = QTextEdit()
+        self.redis_cmd_text.setPlaceholderText('-- AI 生成的 Redis 命令将显示在这里')
+        self.redis_cmd_text.setReadOnly(True)
+        self.redis_cmd_text.setFont(QFont('Consolas', 10))
+        cmd_ly.addWidget(self.redis_cmd_text)
+        exec_row = QHBoxLayout()
+        self.redis_exec_btn = QPushButton('执行命令')
+        self.redis_exec_btn.setProperty('accent', True)
+        self.redis_exec_btn.clicked.connect(self._redis_execute)
+        exec_row.addWidget(self.redis_exec_btn)
+        exec_row.addStretch()
+        cmd_ly.addLayout(exec_row)
+        layout.addWidget(cmd_group, 1)
+
+        self.redis_log = QTextEdit()
+        self.redis_log.setReadOnly(True)
+        self.redis_log.setMaximumHeight(120)
+        self.redis_log.setFont(QFont('Consolas', 10))
+        layout.addWidget(self.redis_log)
+
+    def _redis_generate(self):
+        question = self.redis_input.toPlainText().strip()
+        if not question:
+            return
+        self.redis_gen_btn.setText('生成中...')
+        self.redis_gen_btn.setEnabled(False)
+
+        def do_fetch():
+            try:
+                r = requests.post(f'{API_BASE}/api/redis/query',
+                                  json={'question': question}, timeout=60)
+                return r.json()
+            except Exception as e:
+                return {'error': str(e)}
+
+        def callback(resp):
+            self.redis_gen_btn.setText('生成命令')
+            self.redis_gen_btn.setEnabled(True)
+            if resp.get('error'):
+                self.redis_cmd_text.setPlainText(f'# 错误: {resp["error"]}')
+            else:
+                self.redis_cmd_text.setPlainText(resp.get('command', resp.get('answer', '')))
+            self.redis_log.append(f'[Q] {question}\n[A] {resp.get("command", resp.get("answer", ""))}\n')
+
+        self._run_async(do_fetch, callback)
+
+    def _redis_execute(self):
+        cmd_text = self.redis_cmd_text.toPlainText().strip()
+        if not cmd_text or cmd_text.startswith('#'):
+            return
+        self.redis_exec_btn.setText('执行中...')
+        self.redis_exec_btn.setEnabled(False)
+
+        def do_fetch():
+            try:
+                r = requests.post(f'{API_BASE}/api/redis/execute',
+                                  json={'command': cmd_text}, timeout=10)
+                return r.json()
+            except Exception as e:
+                return {'error': str(e)}
+
+        def callback(resp):
+            self.redis_exec_btn.setText('执行命令')
+            self.redis_exec_btn.setEnabled(True)
+            if resp.get('ok'):
+                self.redis_log.append(f'✓ {resp.get("result", "OK")}\n')
+                self._load_redis_keys()
+            else:
+                self.redis_log.append(f'✗ {resp.get("error")}\n')
 
         self._run_async(do_fetch, callback)
 
