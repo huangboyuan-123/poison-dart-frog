@@ -1064,12 +1064,29 @@ class MainWindow(QMainWindow):
             self.redis_exec_btn.setText('执行命令')
             self.redis_exec_btn.setEnabled(True)
             if resp.get('ok'):
-                self.redis_log.append(f'✓ {resp.get("result", "OK")}\n')
+                result = resp.get('result', 'OK')
+                self.redis_log.append(f'✓ {result}\n')
+                # 提取读命令结果展示到 B栏
+                self._show_redis_result(result, cmd_text)
                 self._load_redis_keys()
             else:
                 self.redis_log.append(f'✗ {resp.get("error")}\n')
 
         self._run_async(do_fetch, callback)
+
+    def _show_redis_result(self, result: str, cmd: str):
+        """解析 Redis 执行结果并展示到 B栏"""
+        lines = result.strip().split('\n')
+        for line in lines:
+            if 'GET:' in line or 'HGET:' in line or 'HGETALL:' in line or 'LRANGE:' in line or 'SMEMBERS:' in line or 'ZRANGE:' in line:
+                # 提取 "CMD: value" 中的 value 部分
+                val = line.split(':', 1)[-1].strip()
+                self.redis_value_text.setPlainText(val)
+                # 提取 key 名更新标题
+                parts = cmd.strip().split()
+                if len(parts) >= 2:
+                    self.redis_key_label.setText(f'键: {parts[1]} (AI查询)')
+                break
 
     def _save_redis_value(self):
         key = self.redis_key_label.text().replace('键: ', '')
