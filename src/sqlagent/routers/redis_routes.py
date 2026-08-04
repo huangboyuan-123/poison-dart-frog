@@ -180,7 +180,7 @@ async def redis_query(req: RedisQueryRequest):
             "重要规则:\n"
             "- Hash 用 HSET/HGET/HGETALL/HDEL\n"
             "- String 用 SET/GET\n"
-            "- 改键类型: DEL旧键 → 用新类型命令重建 (如转Hash: DEL key + HSET key f1 v1 f2 v2)\n"
+            "- 改键类型: DEL旧键 → 用新类型命令重建。如果旧值是dict格式,解析出字段→HSET\n"
             "- 根据提供的键类型信息选择正确的命令\n"
             "- TYPE 只查看不修改，不要单独输出 TYPE\n"
         ), ("human", "{question}")])
