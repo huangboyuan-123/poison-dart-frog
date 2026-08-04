@@ -465,6 +465,17 @@ class MainWindow(QMainWindow):
         act_exit.triggered.connect(self.close)
         file_menu.addAction(act_exit)
 
+        switch_menu = menubar.addMenu('切换')
+        act_home = QAction('🏠 首页', self)
+        act_home.triggered.connect(lambda: self._switch_workspace('home'))
+        switch_menu.addAction(act_home)
+        act_mysql = QAction('🐬 MySQL', self)
+        act_mysql.triggered.connect(lambda: self._switch_workspace('mysql'))
+        switch_menu.addAction(act_mysql)
+        act_redis = QAction('🔴 Redis', self)
+        act_redis.triggered.connect(lambda: self._switch_workspace('redis'))
+        switch_menu.addAction(act_redis)
+
         tools_menu = menubar.addMenu('工具')
         act_export = QAction('导出数据 (CSV/Excel)', self)
         act_export.triggered.connect(self._export_csv)
@@ -553,12 +564,6 @@ class MainWindow(QMainWindow):
 
         home_layout.addLayout(cards)
 
-        # 返回首页按钮 (MySQL/Redis workspace 用)
-        self.home_btn = QPushButton('🏠 返回首页')
-        self.home_btn.setFixedHeight(24)
-        self.home_btn.clicked.connect(lambda: self._switch_workspace('home'))
-        self.home_btn.hide()
-
         self.stack.addWidget(home)  # index 0
 
         # ── Page 1: MySQL workspace ──
@@ -566,8 +571,6 @@ class MainWindow(QMainWindow):
         mysql_ws_layout = QVBoxLayout(mysql_ws)
         mysql_ws_layout.setContentsMargins(0, 0, 0, 0)
         mysql_ws_layout.setSpacing(0)
-        mysql_ws_layout.addWidget(self.home_btn)
-
         splitter = QSplitter(Qt.Horizontal)
         panel_a = QWidget(); panel_b = QWidget(); panel_c = QWidget()
         self.panel_c = panel_c
@@ -585,10 +588,6 @@ class MainWindow(QMainWindow):
         redis_ws_layout = QVBoxLayout(redis_ws)
         redis_ws_layout.setContentsMargins(0, 0, 0, 0)
         redis_ws_layout.setSpacing(0)
-        redis_home_btn = QPushButton('🏠 返回首页')
-        redis_home_btn.setFixedHeight(24)
-        redis_home_btn.clicked.connect(lambda: self._switch_workspace('home'))
-        redis_ws_layout.addWidget(redis_home_btn)
 
         redis_splitter = QSplitter(Qt.Horizontal)
         ra = QWidget(); rb = QWidget(); rc = QWidget()
@@ -633,7 +632,7 @@ class MainWindow(QMainWindow):
         self.schema_tree = QTreeWidget()
         self.schema_tree.setHeaderHidden(True)
         self.schema_tree.setIndentation(14)
-        self.schema_tree.setIconSize(QSize(18, 18))
+        self.schema_tree.setIconSize(QSize(22, 22))
         self.schema_tree.itemExpanded.connect(self._on_tree_expand)
         self.schema_tree.itemClicked.connect(self._on_tree_click)
         self.schema_tree.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -833,7 +832,6 @@ class MainWindow(QMainWindow):
 
     def _switch_workspace(self, mode: str):
         """切换工作区: home / mysql / redis"""
-        self.home_btn.setVisible(mode != 'home')
         if mode == 'home':
             self.stack.setCurrentIndex(0)
         elif mode == 'mysql':
@@ -1151,7 +1149,7 @@ class MainWindow(QMainWindow):
 
             for db_name in dbs:
                 db_item = QTreeWidgetItem([db_name])
-                db_icon = QIcon(str(ICONS_DIR / 'database.png'))
+                db_icon = QIcon(str(ICONS_DIR / 'big_database.png'))
                 db_item.setIcon(0, db_icon)
                 db_item.setData(0, Qt.UserRole + 1, 'database')
                 db_item.setData(0, Qt.UserRole + 2, db_name)
