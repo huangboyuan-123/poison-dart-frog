@@ -607,10 +607,8 @@ class MainWindow(QMainWindow):
         # 状态栏
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.sb_db = QLabel('● 检测中...')
         self.sb_history = QLabel('')
-        self.status_bar.addWidget(self.sb_db)
-        self.status_bar.addPermanentWidget(self.sb_history)
+        self.status_bar.addWidget(self.sb_history)
 
     # ═══ A栏: 数据库菜单 ═══
     def _build_panel_a(self, parent: QWidget):
@@ -1102,10 +1100,7 @@ class MainWindow(QMainWindow):
         load_db_configs()
         self._refresh_db_combo()
         self._refresh_history()
-        self._check_health()
         self._load_schema_tree()
-        # 每 15 秒重新检测
-        self._health_timer = self.startTimer(15000)
 
     def _refresh_db_combo(self):
         self.db_combo.clear()
@@ -2117,31 +2112,6 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, '提示', f'已导出到 {path}')
         except Exception as e:
             QMessageBox.warning(self, '错误', str(e))
-
-    def timerEvent(self, event):
-        """定时器: 每15秒检测健康状态"""
-        self._check_health()
-
-    def _check_health(self):
-        def do_check():
-            try:
-                r = requests.get(f'{API_BASE}/health', timeout=3)
-                return r.json()
-            except Exception:
-                return None
-
-        def callback(resp):
-            if resp and resp.get('database'):
-                self.sb_db.setText('● MySQL 已连接')
-                self.sb_db.setStyleSheet(f'color: {SUCCESS_COLOR};')
-            elif resp:
-                self.sb_db.setText('● MySQL 断开')
-                self.sb_db.setStyleSheet(f'color: {WARNING_COLOR};')
-            else:
-                self.sb_db.setText('● API 离线')
-                self.sb_db.setStyleSheet(f'color: {DANGER_COLOR};')
-
-        self._run_async(do_check, callback)
 
     # ── 工具 ────────────────────────────────
     def _run_async(self, target, callback):
