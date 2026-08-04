@@ -466,7 +466,8 @@ class MainWindow(QMainWindow):
         file_menu.addAction(act_exit)
 
         switch_menu = menubar.addMenu('切换')
-        act_home = QAction('🏠 首页', self)
+        home_icon = QIcon(str(ICONS_DIR / 'home.png'))
+        act_home = QAction(home_icon, '首页', self)
         act_home.triggered.connect(lambda: self._switch_workspace('home'))
         switch_menu.addAction(act_home)
         act_mysql = QAction('🐬 MySQL', self)
@@ -617,9 +618,9 @@ class MainWindow(QMainWindow):
         layout.setSpacing(4)
 
         hdr = QHBoxLayout()
-        hdr.addWidget(QLabel('📊 数据库'))
+        hdr.addWidget(QLabel('数据库'))
         hdr.addStretch()
-        add_btn = QPushButton('+ 新增')
+        add_btn = QPushButton(' 新增')
         add_btn.setFixedHeight(22)
         add_btn.clicked.connect(self._add_db_dialog)
         hdr.addWidget(add_btn)
