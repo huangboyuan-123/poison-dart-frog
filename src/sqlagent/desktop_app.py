@@ -12,8 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 from PySide6 import QtCore
-from PySide6.QtCore import (Qt, QThread, Signal, QRect, QRegularExpression, QSize,
-                              QStringListModel)
+from PySide6.QtCore import (Qt, QThread, Signal, QRect, QRegularExpression, QSize)
 from PySide6.QtGui import (QAction, QColor, QFont, QFontDatabase,
                             QKeySequence, QSyntaxHighlighter,
                             QTextCharFormat, QPalette, QIcon, QAction)
@@ -26,7 +25,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox,
                                 QTabWidget, QTableWidget, QTableWidgetItem,
                                 QTextEdit, QTreeWidget, QTreeWidgetItem,
                                 QVBoxLayout, QWidget, QListWidget,
-                                QListWidgetItem, QGroupBox, QCompleter)
+                                QListWidgetItem, QGroupBox)
 
 # ═══════════════════════════════════════════
 # 配色 & 常量
@@ -703,12 +702,8 @@ class MainWindow(QMainWindow):
         sql_ly.addWidget(self.sql_text)
         self.highlighter = SqlHighlighter(self.sql_text.document())
 
-        # SQL 自动补全
-        self.sql_completer = QCompleter([], self.sql_text)
-        self.sql_completer.setCaseSensitivity(Qt.CaseInsensitive)
-        self.sql_completer.setCompletionMode(QCompleter.PopupCompletion)
-        self.sql_completer.setFilterMode(Qt.MatchContains)
-        self.sql_text.setCompleter(self.sql_completer)
+        # SQL 补全词表 (右键 → 插入SQL片段)
+        self.sql_completion_words: List[str] = []
 
         exec_row = QHBoxLayout()
         self.exec_btn = QPushButton('执行 SQL')
@@ -1339,7 +1334,7 @@ class MainWindow(QMainWindow):
                        'COUNT', 'SUM', 'AVG', 'MAX', 'MIN', 'DISTINCT', 'AS',
                        'NULL', 'IS NULL', 'IS NOT NULL', 'DEFAULT', 'PRIMARY KEY',
                        'LIMIT 100', 'ORDER BY', 'DESC', 'ASC'])
-        self.sql_completer.setModel(QStringListModel(sorted(words)))
+        self.sql_completion_words = sorted(words)
 
     def _on_tree_expand(self, item: QTreeWidgetItem):
         """展开节点时懒加载"""
