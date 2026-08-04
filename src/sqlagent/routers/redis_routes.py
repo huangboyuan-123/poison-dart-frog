@@ -152,8 +152,14 @@ async def redis_query(req: RedisQueryRequest):
         prompt = ChatPromptTemplate.from_messages([(
             "system",
             "你是 Redis 专家。用户用中文描述需求，你输出对应的 Redis 命令。"
-            "只输出命令，每行一个，不要解释。支持: GET/SET/DEL/EXISTS/EXPIRE/TTL"
-            "/KEYS/SCAN/HGET/HSET/HGETALL/LPUSH/RPUSH/LRANGE/SADD/SMEMBERS/ZADD/ZRANGE等。"
+            "只输出命令，每行一个，不要解释。\n\n"
+            "重要规则:\n"
+            "- 修改 Hash 字段用 HSET key field value (不是 SET)\n"
+            "- 修改 String 用 SET key value\n"
+            "- 先 GET 或 HGETALL 查看数据类型，再选择正确的命令\n"
+            "- 如果不知道类型，先用 TYPE key 查看\n\n"
+            "支持: GET/SET/DEL/TYPE/EXISTS/EXPIRE/TTL/KEYS/SCAN/"
+            "HGET/HSET/HGETALL/HDEL/LPUSH/RPUSH/LRANGE/SADD/SMEMBERS/ZADD/ZRANGE"
         ), ("human", "{question}")])
 
         chain = prompt | llm
