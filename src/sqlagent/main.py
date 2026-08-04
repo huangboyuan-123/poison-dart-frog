@@ -20,7 +20,7 @@ from rich.console import Console
 # 兼容直接运行 (python main.py) 和模块运行 (python -m sqlagent.main)
 try:
     from . import __version__
-    from .routers import health, query, schema, table
+    from .routers import health, query, schema, table, redis_routes
 except ImportError:
     import sys
     from pathlib import Path
@@ -29,7 +29,7 @@ except ImportError:
     sys.path.insert(0, str(_src))
 
     import sqlagent  # type: ignore
-    from sqlagent.routers import health, query, schema, table  # type: ignore
+    from sqlagent.routers import health, query, schema, table, redis_routes  # type: ignore
 
     __version__ = sqlagent.__version__
 
@@ -90,6 +90,7 @@ app.include_router(health.router)
 app.include_router(query.router)
 app.include_router(schema.router)
 app.include_router(table.router)
+app.include_router(redis_routes.router)
 
 
 # ── 根路径 ────────────────────────────────────────────

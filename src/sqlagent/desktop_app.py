@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox,
                                 QTabWidget, QTableWidget, QTableWidgetItem,
                                 QTextEdit, QTreeWidget, QTreeWidgetItem,
                                 QVBoxLayout, QWidget, QListWidget,
-                                QListWidgetItem, QGroupBox)
+                                QListWidgetItem, QGroupBox, QStackedWidget)
 
 # ═══════════════════════════════════════════
 # 配色 & 常量
@@ -482,26 +482,128 @@ class MainWindow(QMainWindow):
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
 
-        # 三栏分栏: A(表树) | B(数据浏览) | C(AI+日志)
+        # QStackedWidget: Page0=首页, Page1=MySQL, Page2=Redis
+        self.stack = QStackedWidget()
+        root_layout.addWidget(self.stack)
+
+        # ── Page 0: 首页 ──
+        home = QWidget()
+        home_layout = QVBoxLayout(home)
+        home_layout.setAlignment(Qt.AlignCenter)
+        home_layout.setSpacing(20)
+
+        title = QLabel('SQLAgent Desktop')
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet('font-size: 28px; font-weight: bold; color: #E8E8E8;')
+        home_layout.addWidget(title)
+
+        subtitle = QLabel('选择数据源类型开始')
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setStyleSheet(f'font-size: 14px; color: {MUTED}; margin-bottom: 20px;')
+        home_layout.addWidget(subtitle)
+
+        cards = QHBoxLayout()
+        cards.setAlignment(Qt.AlignCenter)
+        cards.setSpacing(30)
+
+        # MySQL 卡片
+        mysql_card = QPushButton()
+        mysql_card.setFixedSize(200, 240)
+        mysql_card.setStyleSheet(f"""
+            QPushButton {{ background: {BG}; border: 2px solid rgba(37,116,255,0.2); border-radius: 12px; }}
+            QPushButton:hover {{ border-color: #2574FF; background: #272B33; }}
+        """)
+        mysql_card.clicked.connect(lambda: self._switch_workspace('mysql'))
+        mysql_layout = QVBoxLayout(mysql_card)
+        mysql_layout.setAlignment(Qt.AlignCenter)
+        mysql_icon = QLabel('🐬')
+        mysql_icon.setAlignment(Qt.AlignCenter)
+        mysql_icon.setStyleSheet('font-size: 48px;')
+        mysql_layout.addWidget(mysql_icon)
+        mysql_label = QLabel('MySQL')
+        mysql_label.setAlignment(Qt.AlignCenter)
+        mysql_label.setStyleSheet('font-size: 18px; font-weight: bold; color: #E8E8E8;')
+        mysql_layout.addWidget(mysql_label)
+        mysql_desc = QLabel('关系型数据库\n表结构 · SQL查询 · 数据编辑')
+        mysql_desc.setAlignment(Qt.AlignCenter)
+        mysql_desc.setStyleSheet(f'font-size: 11px; color: {MUTED};')
+        mysql_layout.addWidget(mysql_desc)
+        cards.addWidget(mysql_card)
+
+        # Redis 卡片
+        redis_card = QPushButton()
+        redis_card.setFixedSize(200, 240)
+        redis_card.setStyleSheet(f"""
+            QPushButton {{ background: {BG}; border: 2px solid rgba(220,50,50,0.2); border-radius: 12px; }}
+            QPushButton:hover {{ border-color: #DC3232; background: #272B33; }}
+        """)
+        redis_card.clicked.connect(lambda: self._switch_workspace('redis'))
+        redis_layout = QVBoxLayout(redis_card)
+        redis_layout.setAlignment(Qt.AlignCenter)
+        redis_icon = QLabel('🔴')
+        redis_icon.setAlignment(Qt.AlignCenter)
+        redis_icon.setStyleSheet('font-size: 48px;')
+        redis_layout.addWidget(redis_icon)
+        redis_label = QLabel('Redis')
+        redis_label.setAlignment(Qt.AlignCenter)
+        redis_label.setStyleSheet('font-size: 18px; font-weight: bold; color: #E8E8E8;')
+        redis_layout.addWidget(redis_label)
+        redis_desc = QLabel('键值数据库\n键浏览 · 值查看 · 缓存管理')
+        redis_desc.setAlignment(Qt.AlignCenter)
+        redis_desc.setStyleSheet(f'font-size: 11px; color: {MUTED};')
+        redis_layout.addWidget(redis_desc)
+        cards.addWidget(redis_card)
+
+        home_layout.addLayout(cards)
+
+        # 返回首页按钮 (MySQL/Redis workspace 用)
+        self.home_btn = QPushButton('🏠 返回首页')
+        self.home_btn.setFixedHeight(24)
+        self.home_btn.clicked.connect(lambda: self._switch_workspace('home'))
+        self.home_btn.hide()
+
+        self.stack.addWidget(home)  # index 0
+
+        # ── Page 1: MySQL workspace ──
+        mysql_ws = QWidget()
+        mysql_ws_layout = QVBoxLayout(mysql_ws)
+        mysql_ws_layout.setContentsMargins(0, 0, 0, 0)
+        mysql_ws_layout.setSpacing(0)
+        mysql_ws_layout.addWidget(self.home_btn)
+
         splitter = QSplitter(Qt.Horizontal)
-        root_layout.addWidget(splitter)
-
-        panel_a = QWidget()
-        panel_b = QWidget()
-        panel_c = QWidget()
-        self.panel_c = panel_c  # 保存引用用于折叠
-        splitter.addWidget(panel_a)
-        splitter.addWidget(panel_b)
-        splitter.addWidget(panel_c)
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 40)
-        splitter.setStretchFactor(2, 60)
-        splitter.setHandleWidth(4)
-        panel_a.setFixedWidth(200)
-
+        panel_a = QWidget(); panel_b = QWidget(); panel_c = QWidget()
+        self.panel_c = panel_c
+        splitter.addWidget(panel_a); splitter.addWidget(panel_b); splitter.addWidget(panel_c)
+        splitter.setStretchFactor(0, 0); splitter.setStretchFactor(1, 40); splitter.setStretchFactor(2, 60)
+        splitter.setHandleWidth(4); panel_a.setFixedWidth(200)
         self._build_panel_a(panel_a)
         self._build_panel_b(panel_b)
         self._build_panel_c(panel_c)
+        mysql_ws_layout.addWidget(splitter, 1)
+        self.stack.addWidget(mysql_ws)  # index 1
+
+        # ── Page 2: Redis workspace ──
+        redis_ws = QWidget()
+        redis_ws_layout = QVBoxLayout(redis_ws)
+        redis_ws_layout.setContentsMargins(0, 0, 0, 0)
+        redis_ws_layout.setSpacing(0)
+        redis_home_btn = QPushButton('🏠 返回首页')
+        redis_home_btn.setFixedHeight(24)
+        redis_home_btn.clicked.connect(lambda: self._switch_workspace('home'))
+        redis_ws_layout.addWidget(redis_home_btn)
+
+        redis_splitter = QSplitter(Qt.Horizontal)
+        ra = QWidget(); rb = QWidget()
+        redis_splitter.addWidget(ra); redis_splitter.addWidget(rb)
+        redis_splitter.setStretchFactor(0, 0); redis_splitter.setStretchFactor(1, 1)
+        redis_splitter.setHandleWidth(4); ra.setFixedWidth(250)
+        self._build_redis_panel_a(ra)
+        self._build_redis_panel_b(rb)
+        redis_ws_layout.addWidget(redis_splitter, 1)
+        self.stack.addWidget(redis_ws)  # index 2
+
+        self.stack.setCurrentIndex(0)  # 默认首页
 
         # 状态栏
         self.status_bar = QStatusBar()
@@ -730,6 +832,174 @@ class MainWindow(QMainWindow):
         self.history_list.itemDoubleClicked.connect(self._on_history_click)
         self.tabs.addTab(self.history_list, '历史记录')
         layout.addWidget(self.tabs)
+
+    def _switch_workspace(self, mode: str):
+        """切换工作区: home / mysql / redis"""
+        self.home_btn.setVisible(mode != 'home')
+        if mode == 'home':
+            self.stack.setCurrentIndex(0)
+        elif mode == 'mysql':
+            self.stack.setCurrentIndex(1)
+            if not hasattr(self, '_mysql_loaded'):
+                self._load_data()
+                self._mysql_loaded = True
+        elif mode == 'redis':
+            self.stack.setCurrentIndex(2)
+            if not hasattr(self, '_redis_loaded'):
+                self._load_redis_keys()
+                self._redis_loaded = True
+
+    # ═══ Redis Panel A: 键浏览 ═══
+    def _build_redis_panel_a(self, parent: QWidget):
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(4, 8, 2, 4)
+        layout.setSpacing(4)
+
+        hdr = QHBoxLayout()
+        hdr.addWidget(QLabel('🔴 Redis 键'))
+        hdr.addStretch()
+        refresh_btn = QPushButton('刷新')
+        refresh_btn.setFixedHeight(22)
+        refresh_btn.clicked.connect(self._load_redis_keys)
+        hdr.addWidget(refresh_btn)
+        layout.addLayout(hdr)
+
+        self.redis_key_input = QLineEdit()
+        self.redis_key_input.setPlaceholderText('键模式 (如 user:*, * 查全部)')
+        self.redis_key_input.returnPressed.connect(self._load_redis_keys)
+        layout.addWidget(self.redis_key_input)
+
+        self.redis_tree = QTreeWidget()
+        self.redis_tree.setHeaderHidden(True)
+        self.redis_tree.setIndentation(12)
+        self.redis_tree.itemClicked.connect(self._on_redis_key_click)
+        layout.addWidget(self.redis_tree, 1)
+
+    def _build_redis_panel_b(self, parent: QWidget):
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(4, 8, 8, 4)
+        layout.setSpacing(4)
+
+        self.redis_key_label = QLabel('选择一个键查看值')
+        self.redis_key_label.setStyleSheet('font-weight: bold; font-size: 13px;')
+        layout.addWidget(self.redis_key_label)
+
+        type_row = QHBoxLayout()
+        self.redis_type_label = QLabel('')
+        self.redis_type_label.setStyleSheet(f'color: {MUTED};')
+        type_row.addWidget(self.redis_type_label)
+        type_row.addStretch()
+        layout.addLayout(type_row)
+
+        self.redis_value_text = QTextEdit()
+        self.redis_value_text.setReadOnly(True)
+        self.redis_value_text.setFont(QFont('Consolas', 10))
+        layout.addWidget(self.redis_value_text, 1)
+
+        save_row = QHBoxLayout()
+        self.redis_save_btn = QPushButton('保存修改')
+        self.redis_save_btn.setProperty('accent', True)
+        self.redis_save_btn.clicked.connect(self._save_redis_value)
+        self.redis_save_btn.setEnabled(False)
+        save_row.addWidget(self.redis_save_btn)
+        save_row.addStretch()
+        self.redis_delete_btn = QPushButton('删除键')
+        self.redis_delete_btn.setProperty('danger', True)
+        self.redis_delete_btn.clicked.connect(self._delete_redis_key)
+        self.redis_delete_btn.setEnabled(False)
+        save_row.addWidget(self.redis_delete_btn)
+        layout.addLayout(save_row)
+
+    def _load_redis_keys(self):
+        """加载 Redis 键列表"""
+        pattern = self.redis_key_input.text() or '*'
+        self.redis_tree.clear()
+
+        def do_fetch():
+            try:
+                r = requests.get(f'{API_BASE}/api/redis/keys?pattern={pattern}', timeout=5)
+                return r.json()
+            except Exception as e:
+                return {'error': str(e)}
+
+        def callback(data):
+            keys = data.get('keys', [])
+            # 构建层级树
+            tree_map: Dict[str, QTreeWidgetItem] = {}
+            for key in sorted(keys):
+                parts = key.split(':')
+                parent = self.redis_tree
+                for i, part in enumerate(parts):
+                    full_path = ':'.join(parts[:i+1])
+                    if i == len(parts) - 1:
+                        item = QTreeWidgetItem([part])
+                        item.setData(0, Qt.UserRole + 1, 'key')
+                        item.setData(0, Qt.UserRole + 2, key)
+                        type_color = data.get('types', {}).get(key, '')
+                        if type_color:
+                            item.setForeground(0, QColor(type_color))
+                        if full_path in tree_map:
+                            tree_map[full_path].parent().addChild(item)
+                        else:
+                            self.redis_tree.addTopLevelItem(item)
+                    else:
+                        if full_path not in tree_map:
+                            item = QTreeWidgetItem([part])
+                            self.redis_tree.addTopLevelItem(item)
+                            tree_map[full_path] = item
+                        parent = tree_map[full_path]
+
+        self._run_async(do_fetch, callback)
+
+    def _on_redis_key_click(self, item: QTreeWidgetItem, _col: int):
+        if item.data(0, Qt.UserRole + 1) != 'key':
+            return
+        key = item.data(0, Qt.UserRole + 2)
+        self.redis_key_label.setText(f'键: {key}')
+        self.redis_value_text.setReadOnly(True)
+        self.redis_save_btn.setEnabled(False)
+        self.redis_delete_btn.setEnabled(False)
+
+        def do_fetch():
+            try:
+                r = requests.get(f'{API_BASE}/api/redis/key/{key}', timeout=5)
+                return r.json()
+            except Exception as e:
+                return {'error': str(e)}
+
+        def callback(data):
+            self.redis_type_label.setText(f'类型: {data.get("type", "")}')
+            value = data.get('value', '')
+            self.redis_value_text.setPlainText(str(value))
+            self.redis_value_text.setReadOnly(False)
+            self.redis_save_btn.setEnabled(True)
+            self.redis_delete_btn.setEnabled(True)
+
+        self._run_async(do_fetch, callback)
+
+    def _save_redis_value(self):
+        key = self.redis_key_label.text().replace('键: ', '')
+        val = self.redis_value_text.toPlainText()
+        try:
+            r = requests.post(f'{API_BASE}/api/redis/key/{key}',
+                              json={'value': val}, timeout=5).json()
+            if r.get('ok'):
+                QMessageBox.information(self, '成功', '已保存')
+            else:
+                QMessageBox.warning(self, '错误', str(r.get('error', '')))
+        except Exception as e:
+            QMessageBox.warning(self, '错误', str(e))
+
+    def _delete_redis_key(self):
+        key = self.redis_key_label.text().replace('键: ', '')
+        if QMessageBox.question(self, '确认', f'删除键 {key}?'):
+            try:
+                r = requests.delete(f'{API_BASE}/api/redis/key/{key}', timeout=5).json()
+                if r.get('ok'):
+                    self.redis_value_text.clear()
+                    self._load_redis_keys()
+            except Exception as e:
+                QMessageBox.warning(self, '错误', str(e))
 
     # ── 数据加载 ────────────────────────────
     def _load_data(self):
