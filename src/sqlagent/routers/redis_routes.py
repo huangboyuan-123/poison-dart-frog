@@ -178,10 +178,11 @@ async def redis_query(req: RedisQueryRequest):
             "你是 Redis 专家。用户用中文描述需求，你输出对应的 Redis 命令。"
             "只输出命令，每行一个，不要解释。\n\n"
             "重要规则:\n"
-            "- Hash 类型用 HSET key field value, HGET key field, HGETALL key\n"
-            "- String 类型用 SET key value, GET key\n"
+            "- Hash 用 HSET/HGET/HGETALL/HDEL\n"
+            "- String 用 SET/GET\n"
+            "- 改键类型: DEL旧键 → 用新类型命令重建 (如转Hash: DEL key + HSET key f1 v1 f2 v2)\n"
             "- 根据提供的键类型信息选择正确的命令\n"
-            "- 如果不知道类型，先用 TYPE key 查看\n"
+            "- TYPE 只查看不修改，不要单独输出 TYPE\n"
         ), ("human", "{question}")])
 
         chain = prompt | llm
