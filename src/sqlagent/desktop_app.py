@@ -1101,6 +1101,8 @@ class MainWindow(QMainWindow):
         self._refresh_history()
         self._check_health()
         self._load_schema_tree()
+        # 每 15 秒重新检测
+        self._health_timer = self.startTimer(15000)
 
     def _refresh_db_combo(self):
         self.db_combo.clear()
@@ -2112,6 +2114,10 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, '提示', f'已导出到 {path}')
         except Exception as e:
             QMessageBox.warning(self, '错误', str(e))
+
+    def timerEvent(self, event):
+        """定时器: 每15秒检测健康状态"""
+        self._check_health()
 
     def _check_health(self):
         def do_check():
