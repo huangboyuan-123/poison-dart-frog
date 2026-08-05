@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 from PySide6 import QtCore
-from PySide6.QtCore import (Qt, QThread, Signal, QRect, QRegularExpression, QSize)
+from PySide6.QtCore import (Qt, QThread, QTimer, Signal, QRect, QRegularExpression, QSize)
 from PySide6.QtGui import (QAction, QColor, QFont, QFontDatabase,
                             QKeySequence, QSyntaxHighlighter,
                             QTextCharFormat, QPalette, QIcon, QAction)
@@ -2185,10 +2185,10 @@ class MainWindow(QMainWindow):
                         buffer += chunk
                         # 每3个字符更新一次 UI
                         if len(buffer) >= 3:
-                            self.root.after(0, lambda t=buffer: self._append_think(t))
+                            QTimer.singleShot(0, lambda t=buffer: self._append_think(t))
                             buffer = ''
                 if buffer:
-                    self.root.after(0, lambda t=buffer: self._append_think(t))
+                    QTimer.singleShot(0, lambda t=buffer: self._append_think(t))
 
                 return {'full_text': full_text, 'error': None}
             except Exception as e:
