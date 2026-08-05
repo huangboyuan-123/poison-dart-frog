@@ -2195,7 +2195,7 @@ class MainWindow(QMainWindow):
         self.gen_btn.setEnabled(False)
         self._show_think('')  # 清空思考面板
 
-        prompt = question + '\n\n请直接给出SQL语句，不要额外解释。'
+        prompt = question + '\n\n请详细分析并给出SQL语句。先查看表结构，再逐步生成正确的SQL。'
         self._stream_worker = StreamWorker(f'{API_BASE}/api/query/stream',
                                            {'question': prompt})
 
