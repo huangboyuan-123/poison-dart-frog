@@ -556,11 +556,20 @@ class MainWindow(QMainWindow):
         self._c_collapsed = False
         self._c_saved_width = 0
 
-        # 无边框窗口 + 拖拽跟踪
+        # 无边框窗口 + 圆角 + 拖拽跟踪
         self.setWindowFlags(Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
         self._drag_pos = None
         self._setup_ui()
         self._load_data()
+
+    def resizeEvent(self, event):
+        """圆角窗口遮罩"""
+        from PySide6.QtGui import QPainterPath, QRegion
+        path = QPainterPath()
+        path.addRoundedRect(self.rect(), 10, 10)
+        self.setMask(QRegion(path.toFillPolygon().toPolygon()))
+        super().resizeEvent(event)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and event.position().y() < 34:
