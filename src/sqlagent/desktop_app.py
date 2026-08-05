@@ -274,9 +274,6 @@ class DbConfigDialog(QDialog):
         self.pass_edit.setEchoMode(QLineEdit.Password)
         layout.addRow('密码:', self.pass_edit)
 
-        self.db_edit = QLineEdit('')
-        layout.addRow('数据库:', self.db_edit)
-
         btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         btns.accepted.connect(self.accept)
         btns.rejected.connect(self.reject)
@@ -291,7 +288,7 @@ class DbConfigDialog(QDialog):
             'port': int(self.port_edit.text()) if self.port_edit.text().isdigit() else 3306,
             'user': self.user_edit.text(),
             'password': self.pass_edit.text(),
-            'database': self.db_edit.text(),
+            'database': '',  # 不指定库，连接服务器根级别
         }
 
 
