@@ -567,7 +567,7 @@ class _RoundedWidget(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('箭毒蛙 — AI+SQL数据库操纵工具')
+        self.setWindowTitle('箭毒蛙')
         self.resize(1200, 780)
         self.setMinimumSize(900, 600)
 
@@ -609,7 +609,7 @@ class MainWindow(QMainWindow):
         tb_layout.setContentsMargins(10, 0, 0, 0)
         tb_layout.setSpacing(0)
 
-        logo = QLabel('箭毒蛙——AI+SQL数据库操纵工具')
+        logo = QLabel('箭毒蛙')
         logo.setStyleSheet('color: #86909C; font-size: 12px; font-weight: 600; background: transparent; border: none;')
         tb_layout.addWidget(logo)
         tb_layout.addStretch()
@@ -698,7 +698,7 @@ class MainWindow(QMainWindow):
         home_layout.setAlignment(Qt.AlignCenter)
         home_layout.setSpacing(20)
 
-        title = QLabel('箭毒蛙 — AI+SQL数据库操纵工具')
+        title = QLabel('箭毒蛙')
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet('font-size: 28px; font-weight: bold; color: #4A88C7;')
         home_layout.addWidget(title)
@@ -796,11 +796,7 @@ class MainWindow(QMainWindow):
 
         self.stack.setCurrentIndex(0)  # 默认首页
 
-        # 状态栏
-        self.status_bar = QStatusBar()
-        self.setStatusBar(self.status_bar)
-        self.sb_history = QLabel('')
-        self.status_bar.addWidget(self.sb_history)
+        # 状态栏已移除
 
     # ═══ A栏: 数据库菜单 ═══
     def _build_panel_a(self, parent: QWidget):
@@ -2307,7 +2303,7 @@ class MainWindow(QMainWindow):
             item = QListWidgetItem(label)
             item.setData(Qt.UserRole, h)
             self.history_list.addItem(item)
-        self.sb_history.setText(f'历史: {len(history)} 条')
+        # 历史记录已更新
 
     def _on_history_click(self, item: QListWidgetItem):
         h = item.data(Qt.UserRole)
@@ -2325,7 +2321,7 @@ class MainWindow(QMainWindow):
         sql = self.sql_text.toPlainText().strip()
         if sql and not sql.startswith('-- AI'):
             QApplication.clipboard().setText(sql)
-            self.status_bar.showMessage('SQL 已复制到剪贴板', 3000)
+            # SQL 已复制(无状态栏提示)
 
     def _export_csv(self):
         """导出当前 Tab 数据 (支持 CSV/Excel)"""
