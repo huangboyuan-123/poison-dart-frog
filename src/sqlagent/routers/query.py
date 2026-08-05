@@ -96,11 +96,21 @@ async def natural_language_query(req: QueryRequest):
                         sql = tool_input
                         break
 
+    # 提取思考步骤
+    steps = []
+    for step in result.get("intermediate_steps", []):
+        action = step[0] if step else None
+        if action:
+            tool_name = getattr(action, 'tool', 'unknown')
+            tool_input = str(getattr(action, 'tool_input', ''))[:100]
+            steps.append(f'{tool_name}: {tool_input}')
+
     return QueryResponse(
         success=True,
         question=req.question,
         sql=sql,
         answer=output,
+        steps=steps,
     )
 
 

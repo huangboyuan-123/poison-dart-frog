@@ -583,9 +583,29 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._load_data()
 
+    def _edge_test(self, pos):
+        """检测鼠标在窗口边缘的位置"""
+        r = self.rect()
+        m = 6  # 边缘检测范围
+        l, t, ri, b = pos.x() < m, pos.y() < m, pos.x() > r.width() - m, pos.y() > r.height() - m
+        if t and l: return Qt.TopLeftCorner
+        if t and ri: return Qt.TopRightCorner
+        if b and l: return Qt.BottomLeftCorner
+        if b and ri: return Qt.BottomRightCorner
+        if t: return Qt.TopEdge
+        if b: return Qt.BottomEdge
+        if l: return Qt.LeftEdge
+        if ri: return Qt.RightEdge
+        return None
+
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton and event.position().y() < 34:
-            self._drag_pos = event.globalPosition().toPoint()
+        if event.button() == Qt.LeftButton:
+            edge = self._edge_test(event.position().toPoint())
+            if edge and self.windowHandle():
+                self.windowHandle().startSystemResize(edge)
+                return
+            if event.position().y() < 34:
+                self._drag_pos = event.globalPosition().toPoint()
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
@@ -593,6 +613,14 @@ class MainWindow(QMainWindow):
             delta = event.globalPosition().toPoint() - self._drag_pos
             self.move(self.pos() + delta)
             self._drag_pos = event.globalPosition().toPoint()
+            return
+        # 更新鼠标样式
+        edge = self._edge_test(event.position().toPoint())
+        cursors = {Qt.TopEdge: Qt.SizeVerCursor, Qt.BottomEdge: Qt.SizeVerCursor,
+                   Qt.LeftEdge: Qt.SizeHorCursor, Qt.RightEdge: Qt.SizeHorCursor,
+                   Qt.TopLeftCorner: Qt.SizeFDiagCursor, Qt.BottomRightCorner: Qt.SizeFDiagCursor,
+                   Qt.TopRightCorner: Qt.SizeBDiagCursor, Qt.BottomLeftCorner: Qt.SizeBDiagCursor}
+        self.setCursor(cursors.get(edge, Qt.ArrowCursor))
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
@@ -1029,6 +1057,13 @@ class MainWindow(QMainWindow):
 
         self.history_list = QListWidget()
         self.history_list.itemDoubleClicked.connect(self._on_history_click)
+        # 思考过程
+        self.think_text = QTextEdit()
+        self.think_text.setReadOnly(True)
+        self.think_text.setFont(QFont('Consolas', 10))
+        self.tabs.addTab(self.think_text, '思考过程')
+        self._show_think('AI 思考过程将在这里实时显示...')
+
         self.tabs.addTab(self.history_list, '历史记录')
         layout.addWidget(self.tabs)
 
@@ -2137,20 +2172,26 @@ class MainWindow(QMainWindow):
             sql = resp.get('sql', '') or ''
             error = resp.get('error', '') or ''
             answer = resp.get('answer', '') or ''
+            steps = resp.get('steps', []) or ''
+
+            # 显示思考过程
+            think_lines = [f'📝 问题: {question}', '─' * 40]
+            if steps:
+                for i, s in enumerate(steps, 1):
+                    think_lines.append(f'🔧 步骤{i}: {s}')
+            if answer:
+                think_lines.append(f'💡 分析: {answer[:500]}')
+            self._show_think('\n'.join(think_lines))
 
             if error:
                 self.sql_text.setPlainText(f'-- 生成失败: {error}')
                 self._show_log(f'✗ 生成失败\n{error}')
-                self.tabs.setCurrentIndex(0)
             elif sql and sql.strip():
-                # 有提取到的 SQL — 放进预览框
                 self.sql_text.setPlainText(sql)
                 self._append_log(f'[生成SQL] {question}\n{sql}\n')
             else:
-                # 没有 SQL — 只显示 AI 分析在日志区，预览框置灰提示
-                self.sql_text.setPlainText('-- AI 未生成 SQL 语句，请查看「执行日志」Tab 中的分析')
+                self.sql_text.setPlainText('-- AI 未生成 SQL 语句，请查看「思考过程」Tab')
                 self._show_log(f'🤖 AI 分析 (未生成SQL)\n{"─"*50}\n{answer}')
-                self.tabs.setCurrentIndex(0)
 
         self._run_async(do_generate, callback)
 
@@ -2289,6 +2330,16 @@ class MainWindow(QMainWindow):
     # ── 日志 ────────────────────────────────
     def _append_log(self, msg: str):
         self.log_text.append(msg)
+
+    def _show_think(self, msg: str):
+        """显示/追加思考过程"""
+        self.think_text.setPlainText(msg)
+        self.tabs.setCurrentIndex(1)  # 思考过程 Tab
+
+    def _append_think(self, msg: str):
+        """追加思考内容(流式)"""
+        self.think_text.append(msg)
+        self.tabs.setCurrentIndex(1)
 
     def _show_log(self, msg: str):
         self.log_text.setPlainText(msg)

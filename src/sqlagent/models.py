@@ -64,6 +64,7 @@ class QueryResponse(BaseModel):
     data: Optional[Dict[str, Any]] = Field(default=None, description="查询结果数据")
     answer: Optional[str] = Field(default=None, description="AI 分析回答")
     error: Optional[str] = Field(default=None, description="错误信息（如有）")
+    steps: Optional[List[str]] = Field(default=None, description="AI 思考步骤")
 
 
 class ExecuteResponse(BaseModel):
