@@ -2175,6 +2175,11 @@ class MainWindow(QMainWindow):
             act_ddl.triggered.connect(lambda t=table_name, d=db_name: self._show_table_ddl(d, t))
             menu.addAction(act_ddl)
 
+            menu.addSeparator()
+            act_drop = QAction('🗑 删除表', self)
+            act_drop.triggered.connect(lambda t=table_name, d=db_name: self._drop_table(d, t))
+            menu.addAction(act_drop)
+
             act_copy = QAction('复制表名', self)
             act_copy.triggered.connect(lambda t=table_name: QApplication.clipboard().setText(t))
             menu.addAction(act_copy)
@@ -2184,6 +2189,13 @@ class MainWindow(QMainWindow):
         elif node_type == 'database':
             db_name = item.data(0, Qt.UserRole + 2)
             menu = QMenu(self)
+            act_refresh = QAction('刷新', self)
+            act_refresh.triggered.connect(self._load_schema_tree)
+            menu.addAction(act_refresh)
+            menu.addSeparator()
+            act_drop_db = QAction('🗑 删除数据库', self)
+            act_drop_db.triggered.connect(lambda d=db_name: self._drop_database(d))
+            menu.addAction(act_drop_db)
             act_use = QAction(f'复制库名', self)
             act_use.triggered.connect(lambda d=db_name: QApplication.clipboard().setText(d))
             menu.addAction(act_use)
@@ -2196,6 +2208,51 @@ class MainWindow(QMainWindow):
             # 刷新表数据
             self._reload_current_tab()
             self._load_schema_tree()
+
+    def _drop_table(self, db: str, table: str):
+        """删除表"""
+        reply = QMessageBox.warning(self, '⚠️ 危险操作',
+                                     f'确定要删除表 {db}.{table} 吗？\n\n此操作不可逆！',
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply != QMessageBox.Yes:
+            return
+        # 二次确认
+        reply2 = QMessageBox.warning(self, '⚠️ 再次确认',
+                                      f'输入 YES 确认删除 {db}.{table}',
+                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply2 != QMessageBox.Yes:
+            return
+        try:
+            r = requests.delete(f'{API_BASE}/api/table/drop?database={db}&table={table}', timeout=10).json()
+            if r.get('success'):
+                self._show_log(f'✓ {r["message"]}')
+                self._load_schema_tree()
+            else:
+                self._show_log(f'✗ {r.get("detail", "删除失败")}')
+        except Exception as e:
+            self._show_log(f'✗ 删除失败: {e}')
+
+    def _drop_database(self, db: str):
+        """删除数据库"""
+        reply = QMessageBox.warning(self, '⚠️ 危险操作',
+                                     f'确定要删除数据库 {db} 吗？\n\n所有表和数据将永久丢失！',
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply != QMessageBox.Yes:
+            return
+        reply2 = QMessageBox.warning(self, '⚠️ 再次确认',
+                                      f'输入 YES 确认删除数据库 {db}',
+                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply2 != QMessageBox.Yes:
+            return
+        try:
+            r = requests.delete(f'{API_BASE}/api/table/database/drop?database={db}', timeout=10).json()
+            if r.get('success'):
+                self._show_log(f'✓ {r["message"]}')
+                self._load_schema_tree()
+            else:
+                self._show_log(f'✗ {r.get("detail", "删除失败")}')
+        except Exception as e:
+            self._show_log(f'✗ 删除失败: {e}')
 
     def _show_table_ddl(self, db: str, table: str):
         """显示建表 DDL"""

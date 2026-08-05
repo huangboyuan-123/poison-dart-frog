@@ -115,3 +115,25 @@ async def get_table_ddl(database: str, table: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     raise HTTPException(status_code=404, detail=f"表 {database}.{table} 不存在")
+
+
+@router.delete("/drop")
+async def drop_table(database: str, table: str):
+    """删除表 (DROP TABLE)"""
+    agent = get_agent()
+    sql = f"DROP TABLE `{database}`.`{table}`"
+    result = agent.db.execute_sql(sql, read_only=False)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return {"success": True, "message": f"表 {database}.{table} 已删除"}
+
+
+@router.delete("/database/drop")
+async def drop_database(database: str):
+    """删除数据库 (DROP DATABASE)"""
+    agent = get_agent()
+    sql = f"DROP DATABASE `{database}`"
+    result = agent.db.execute_sql(sql, read_only=False)
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return {"success": True, "message": f"数据库 {database} 已删除"}
