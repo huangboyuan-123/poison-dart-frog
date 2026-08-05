@@ -560,10 +560,6 @@ class _RoundedWidget(QWidget):
         p.setClipPath(path)
 
     def resizeEvent(self, event):
-        from PySide6.QtGui import QPainterPath, QRegion
-        path = QPainterPath()
-        path.addRoundedRect(self.rect(), 10, 10)
-        self.setMask(QRegion(path.toFillPolygon().toPolygon()))
         self.update()
         super().resizeEvent(event)
 
@@ -686,7 +682,7 @@ class MainWindow(QMainWindow):
         central = _RoundedWidget(self)
         self.setCentralWidget(central)
         root_layout = QVBoxLayout(central)
-        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setContentsMargins(3, 3, 3, 3)
         root_layout.setSpacing(0)
 
         root_layout.addWidget(titlebar)
