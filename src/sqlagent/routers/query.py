@@ -42,16 +42,21 @@ def _extract_sql(output: str) -> Optional[str]:
     # 匹配 ```sql ... ``` 代码块
     sql_block = re.search(r"```sql\s*(.*?)```", output, re.DOTALL | re.IGNORECASE)
     if sql_block:
-        return sql_block.group(1).strip()
-
-    # 匹配 SELECT 开头的语句（直到分号或换行符 + 非空格）
-    select_match = re.search(
-        r"(SELECT\s+.*?;)", output, re.DOTALL | re.IGNORECASE
-    )
-    if select_match:
-        return select_match.group(1).strip()
-
-    return None
+        sql = sql_block.group(1).strip()
+    else:
+        select_match = re.search(
+            r"(SELECT\b.*?;)", output, re.DOTALL | re.IGNORECASE
+        )
+        if select_match:
+            sql = select_match.group(1).strip()
+        else:
+            return None
+    # 修复空格问题
+    sql = re.sub(r'\*FROM', '* FROM', sql)
+    sql = re.sub(r'(\w)WHERE', r'\1 WHERE', sql)
+    sql = re.sub(r'(\w)FROM', r'\1 FROM', sql)
+    sql = re.sub(r'(\w)LIMIT', r'\1 LIMIT', sql)
+    return sql
 
 
 @router.post("/query", response_model=QueryResponse)

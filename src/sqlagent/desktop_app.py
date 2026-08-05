@@ -154,16 +154,26 @@ def _md_to_html(text: str) -> str:
 
 
 def _extract_sql_from_stream(text: str) -> str:
-    """从流式文本中提取 SQL 语句"""
+    """从流式文本中提取 SQL 语句并修复格式"""
     # 匹配 ```sql ... ``` 代码块
     m = re.search(r'```sql\s*(.*?)```', text, re.DOTALL | re.IGNORECASE)
     if m:
-        return m.group(1).strip()
-    # 匹配 SELECT/INSERT/... 语句
-    m = re.search(r'(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|SHOW|DESCRIBE|EXPLAIN)\s+.*?;', text, re.DOTALL | re.IGNORECASE)
-    if m:
-        return m.group(0).strip()
-    return ''
+        sql = m.group(1).strip()
+    else:
+        # 匹配 SQL 语句
+        m = re.search(r'(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|SHOW|DESCRIBE|EXPLAIN)\b.*?;', text, re.DOTALL | re.IGNORECASE)
+        if m:
+            sql = m.group(0).strip()
+        else:
+            return ''
+    # 修复常见空格问题
+    sql = re.sub(r'\*FROM', '* FROM', sql)
+    sql = re.sub(r'(\w)WHERE', r'\1 WHERE', sql)
+    sql = re.sub(r'(\w)FROM', r'\1 FROM', sql)
+    sql = re.sub(r'(\w)LIMIT', r'\1 LIMIT', sql)
+    sql = re.sub(r'(\w)ORDER', r'\1 ORDER', sql)
+    sql = re.sub(r'(\w)GROUP', r'\1 GROUP', sql)
+    return sql
 
 
 # ═══════════════════════════════════════════
