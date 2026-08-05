@@ -129,28 +129,35 @@ QMenu::item:selected { background: #00BFA5; }
 """
 
 def _md_to_html(text: str) -> str:
-    """简单 Markdown → HTML 转换"""
+    """简单 Markdown → HTML 转换，保留换行和段落"""
     import html
-    text = html.escape(text)
-    # 代码块 ```...```
-    text = re.sub(r'```(\w*)\n(.*?)```', r'<pre style="background:#1E1E1E;padding:8px;border-radius:4px;"><code>\2</code></pre>', text, flags=re.DOTALL)
+    text = html.escape(text, quote=False)
+
+    # 代码块 ```...``` — 先处理，保留内部换行
+    def _code_block(m):
+        code = m.group(2).strip()
+        return f'<pre style="background:#1E1E1E;padding:8px 12px;border-radius:4px;margin:8px 0;"><code style="color:#6CB6FF;">{code}</code></pre>'
+    text = re.sub(r'```(\w*)\n(.*?)```', _code_block, text, flags=re.DOTALL)
+
     # 行内代码 `...`
-    text = re.sub(r'`([^`]+)`', r'<code style="background:#333;padding:1px 4px;border-radius:2px;">\1</code>', text)
-    # 加粗
-    text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
-    # 斜体
-    text = re.sub(r'\*(.+?)\*', r'<i>\1</i>', text)
+    text = re.sub(r'`([^`]+)`', r'<code style="background:#3C3F41;padding:1px 5px;border-radius:3px;">\1</code>', text)
+
     # 标题
-    text = re.sub(r'^### (.+)$', r'<h4>\1</h4>', text, flags=re.MULTILINE)
-    text = re.sub(r'^## (.+)$', r'<h3>\1</h3>', text, flags=re.MULTILINE)
-    text = re.sub(r'^# (.+)$', r'<h2>\1</h2>', text, flags=re.MULTILINE)
-    # 分隔线
-    text = re.sub(r'^---$', r'<hr>', text, flags=re.MULTILINE)
+    text = re.sub(r'^### (.+)$', r'<h4 style="margin:8px 0 4px;color:#E8E8E8;">\1</h4>', text, flags=re.MULTILINE)
+    text = re.sub(r'^## (.+)$', r'<h3 style="margin:10px 0 6px;color:#E8E8E8;">\1</h3>', text, flags=re.MULTILINE)
+    # 加粗和斜体
+    text = re.sub(r'\*\*(.+?)\*\*', r'<b style="color:#FFC66D;">\1</b>', text)
+    text = re.sub(r'\*(.+?)\*', r'<i>\1</i>', text)
     # 无序列表
-    text = re.sub(r'^- (.+)$', r'<li>\1</li>', text, flags=re.MULTILINE)
-    # 换行 → <br>
+    text = re.sub(r'^- (.+)$', r'<li style="margin:2px 0;">\1</li>', text, flags=re.MULTILINE)
+    # 分隔线
+    text = re.sub(r'^---$', r'<hr style="border:0;border-top:1px solid rgba(255,255,255,0.1);margin:8px 0;">', text, flags=re.MULTILINE)
+
+    # 连续换行 → </p><p>
+    text = re.sub(r'\n\n+', '</p><p style="margin:6px 0;">', text)
+    # 单换行 → <br>
     text = text.replace('\n', '<br>')
-    return f'<div style="color:#A9B7C6;line-height:1.6;">{text}</div>'
+    return f'<div style="color:#A9B7C6;line-height:1.7;font-size:13px;"><p style="margin:6px 0;">{text}</p></div>'
 
 
 def _extract_sql_from_stream(text: str) -> str:
@@ -2289,14 +2296,15 @@ class MainWindow(QMainWindow):
         self._stream_worker = StreamWorker(f'{API_BASE}/api/query/stream',
                                            {'question': prompt})
 
-        # 实时更新思考面板 — 累积全文逐字刷新
+        # 实时更新思考面板 — 累积全文 Markdown 渲染
         full_buf = []
         def on_chunk(chunk):
             full_buf.append(chunk)
-            self.think_text.setPlainText(''.join(full_buf))
+            self.think_text.setHtml(_md_to_html(''.join(full_buf)))
             self.think_text.verticalScrollBar().setValue(
                 self.think_text.verticalScrollBar().maximum())
-            self.tabs.setCurrentIndex(1)
+            if not self.panel_d.isVisible():
+                self._toggle_panel_d()
 
         self._stream_worker.chunk.connect(on_chunk)
 
