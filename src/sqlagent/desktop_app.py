@@ -2199,21 +2199,19 @@ class MainWindow(QMainWindow):
         self._stream_worker = StreamWorker(f'{API_BASE}/api/query/stream',
                                            {'question': prompt})
 
-        # 实时更新思考面板
-        buf = []
+        # 实时更新思考面板 — 累积全文逐字刷新
+        full_buf = []
         def on_chunk(chunk):
-            buf.append(chunk)
-            if len(buf) >= 3:
-                self._append_think(''.join(buf))
-                buf.clear()
+            full_buf.append(chunk)
+            self.think_text.setPlainText(''.join(full_buf))
+            self.think_text.verticalScrollBar().setValue(
+                self.think_text.verticalScrollBar().maximum())
+            self.tabs.setCurrentIndex(1)
 
         self._stream_worker.chunk.connect(on_chunk)
 
         # 完成回调
         def on_finished(resp):
-            if buf:
-                self._append_think(''.join(buf))
-                buf.clear()
             self.gen_btn.setText('生成 SQL')
             self.gen_btn.setEnabled(True)
             full = resp.get('full_text', '')
