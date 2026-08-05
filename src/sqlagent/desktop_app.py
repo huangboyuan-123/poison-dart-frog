@@ -560,6 +560,10 @@ class _RoundedWidget(QWidget):
         p.setClipPath(path)
 
     def resizeEvent(self, event):
+        from PySide6.QtGui import QPainterPath, QRegion
+        path = QPainterPath()
+        path.addRoundedRect(self.rect(), 10, 10)
+        self.setMask(QRegion(path.toFillPolygon().toPolygon()))
         self.update()
         super().resizeEvent(event)
 
