@@ -2255,9 +2255,6 @@ class MainWindow(QMainWindow):
         worker = ApiWorker(target)
         worker.finished.connect(callback)
         worker.start()
-        # 保持引用防止 GC
-        # 完成后自动清理，防止线程泄漏
-        worker.finished.connect(worker.deleteLater)
 
 
 # ═══════════════════════════════════════════
