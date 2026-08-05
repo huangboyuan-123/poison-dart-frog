@@ -2178,9 +2178,11 @@ class MainWindow(QMainWindow):
                         chunk = line[6:]
                         if chunk == '[DONE]':
                             break
-                        if chunk == '[ERROR]':
-                            buffer = '[ERROR]'
-                            break
+                        if chunk.startswith('[ERROR]'):
+                            error_msg = chunk[8:] if len(chunk) > 8 else '未知错误'
+                            QTimer.singleShot(0, lambda e=error_msg: self._show_log(f'✗ {e}'))
+                            QTimer.singleShot(0, lambda e=error_msg: self._show_think(f'❌ 错误: {e}'))
+                            return {'full_text': '', 'error': error_msg}
                         full_text += chunk
                         buffer += chunk
                         # 每3个字符更新一次 UI
