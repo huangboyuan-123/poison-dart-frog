@@ -544,6 +544,26 @@ class SettingsDialog(QDialog):
         self.accept()
 
 
+# ═══════════════════════════════════════════
+# 圆角容器控件
+# ═══════════════════════════════════════════
+class _RoundedWidget(QWidget):
+    """带抗锯齿圆角的容器"""
+    def paintEvent(self, event):
+        from PySide6.QtGui import QPainter, QPainterPath, QBrush
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        path = QPainterPath()
+        path.addRoundedRect(self.rect(), 10, 10)
+        p.fillPath(path, QBrush(QColor('#2B2B2B')))
+        # 裁剪子控件到圆角区域
+        p.setClipPath(path)
+
+    def resizeEvent(self, event):
+        self.update()
+        super().resizeEvent(event)
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -562,14 +582,6 @@ class MainWindow(QMainWindow):
         self._drag_pos = None
         self._setup_ui()
         self._load_data()
-
-    def resizeEvent(self, event):
-        """圆角窗口遮罩"""
-        from PySide6.QtGui import QPainterPath, QRegion
-        path = QPainterPath()
-        path.addRoundedRect(self.rect(), 10, 10)
-        self.setMask(QRegion(path.toFillPolygon().toPolygon()))
-        super().resizeEvent(event)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and event.position().y() < 34:
@@ -667,7 +679,7 @@ class MainWindow(QMainWindow):
         act_clear_hist.triggered.connect(self._clear_history)
         tools_menu.addAction(act_clear_hist)
 
-        central = QWidget()
+        central = _RoundedWidget(self)
         self.setCentralWidget(central)
         root_layout = QVBoxLayout(central)
         root_layout.setContentsMargins(0, 0, 0, 0)
