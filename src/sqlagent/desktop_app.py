@@ -128,6 +128,19 @@ QMenu::item { padding: 6px 24px; border-radius: 2px; }
 QMenu::item:selected { background: #00BFA5; }
 """
 
+def _extract_sql_from_stream(text: str) -> str:
+    """从流式文本中提取 SQL 语句"""
+    # 匹配 ```sql ... ``` 代码块
+    m = re.search(r'```sql\s*(.*?)```', text, re.DOTALL | re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+    # 匹配 SELECT/INSERT/... 语句
+    m = re.search(r'(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|SHOW|DESCRIBE|EXPLAIN)\s+.*?;', text, re.DOTALL | re.IGNORECASE)
+    if m:
+        return m.group(0).strip()
+    return ''
+
+
 # ═══════════════════════════════════════════
 # SQL 语法高亮器
 # ═══════════════════════════════════════════
@@ -2150,45 +2163,57 @@ class MainWindow(QMainWindow):
             return
         self.gen_btn.setText('生成中...')
         self.gen_btn.setEnabled(False)
+        self._show_think('')  # 清空思考面板
 
-        def do_generate():
+        def do_stream():
+            """流式接收 AI 思考过程"""
             try:
-                # 追加提示确保 AI 返回 SQL
                 prompt = question + '\n\n请直接给出SQL语句，不要额外解释。'
-                r = requests.post(f'{API_BASE}/api/query',
-                                  json={'question': prompt}, timeout=120)
-                return r.json()
+                r = requests.post(f'{API_BASE}/api/query/stream',
+                                  json={'question': prompt}, stream=True, timeout=120)
+                buffer = ''
+                full_text = ''
+                for line in r.iter_lines(decode_unicode=True):
+                    if line and line.startswith('data: '):
+                        chunk = line[6:]
+                        if chunk == '[DONE]':
+                            break
+                        if chunk == '[ERROR]':
+                            buffer = '[ERROR]'
+                            break
+                        full_text += chunk
+                        buffer += chunk
+                        # 每3个字符更新一次 UI
+                        if len(buffer) >= 3:
+                            self.root.after(0, lambda t=buffer: self._append_think(t))
+                            buffer = ''
+                if buffer:
+                    self.root.after(0, lambda t=buffer: self._append_think(t))
+
+                return {'full_text': full_text, 'error': None}
             except Exception as e:
-                return {'error': str(e)}
+                return {'full_text': '', 'error': str(e)}
 
         def callback(resp):
             self.gen_btn.setText('生成 SQL')
             self.gen_btn.setEnabled(True)
-            sql = resp.get('sql', '') or ''
-            error = resp.get('error', '') or ''
-            answer = resp.get('answer', '') or ''
-            steps = resp.get('steps', []) or ''
-
-            # 显示思考过程
-            think_lines = [f'📝 问题: {question}', '─' * 40]
-            if steps:
-                for i, s in enumerate(steps, 1):
-                    think_lines.append(f'🔧 步骤{i}: {s}')
-            if answer:
-                think_lines.append(f'💡 分析: {answer[:500]}')
-            self._show_think('\n'.join(think_lines))
+            full = resp.get('full_text', '')
+            error = resp.get('error', '')
 
             if error:
                 self.sql_text.setPlainText(f'-- 生成失败: {error}')
-                self._show_log(f'✗ 生成失败\n{error}')
-            elif sql and sql.strip():
+                return
+
+            # 从流式文本中提取 SQL
+            sql = _extract_sql_from_stream(full)
+            if sql:
                 self.sql_text.setPlainText(sql)
                 self._append_log(f'[生成SQL] {question}\n{sql}\n')
             else:
-                self.sql_text.setPlainText('-- AI 未生成 SQL 语句，请查看「思考过程」Tab')
-                self._show_log(f'🤖 AI 分析 (未生成SQL)\n{"─"*50}\n{answer}')
+                self.sql_text.setPlainText('-- AI 未生成 SQL，请查看思考过程')
+                self._append_log(f'[生成SQL] {question}\n{full[:300]}')
 
-        self._run_async(do_generate, callback)
+        self._run_async(do_stream, callback)
 
     # ── 执行 SQL ────────────────────────────
     def _execute_sql(self):

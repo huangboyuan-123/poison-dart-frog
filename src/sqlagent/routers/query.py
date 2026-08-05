@@ -157,3 +157,43 @@ async def query_history():
     ]
 
     return {"total": len(items), "items": items}
+
+
+@router.post("/query/stream")
+async def natural_language_query_stream(req: QueryRequest):
+    """流式查询 — SSE 推送思考步骤+答案(打字机效果)"""
+    import asyncio
+    from fastapi.responses import StreamingResponse
+
+    async def event_stream():
+        agent = get_query_agent()
+        # 先运行 agent 获取结果
+        result = agent.run(req.question)
+
+        if not result.get("success"):
+            yield f"data: [ERROR] {result.get('error', '未知错误')}\n\n"
+            return
+
+        output = result.get("output", "")
+        steps = result.get("intermediate_steps", [])
+
+        # 推送思考步骤
+        for step in steps:
+            action = step[0] if step else None
+            if action:
+                tool_name = getattr(action, 'tool', '')
+                tool_input = str(getattr(action, 'tool_input', ''))[:100]
+                step_text = f"🔧 {tool_name}: {tool_input}\n"
+                for char in step_text:
+                    yield f"data: {char}\n\n"
+                    await asyncio.sleep(0.015)  # 打字机延迟
+
+        # 推送最终答案 (逐字)
+        yield "data: \n\n"
+        for char in output:
+            yield f"data: {char}\n\n"
+            await asyncio.sleep(0.015)
+
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
