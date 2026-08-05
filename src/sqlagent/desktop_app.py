@@ -771,6 +771,7 @@ class MainWindow(QMainWindow):
         del_icon = QIcon(str(ICONS_DIR / 'cancel.png'))
         del_btn = QPushButton(del_icon, '')
         del_btn.setFixedSize(22, 22)
+        del_btn.setIconSize(QSize(16, 16))
         del_btn.setFlat(True)
         del_btn.setToolTip('删除当前连接')
         del_btn.setStyleSheet('QPushButton { background: transparent; border: none; } QPushButton:hover { background: rgba(255,255,255,0.1); border-radius: 2px; }')
