@@ -210,6 +210,36 @@ class SqlHighlighter(QSyntaxHighlighter):
 # ═══════════════════════════════════════════
 # 后台工作线程
 # ═══════════════════════════════════════════
+class StreamWorker(QThread):
+    """流式 API 调用线程 — 支持实时推送数据块"""
+    chunk = Signal(str)    # 流式数据块
+    finished = Signal(object)  # 最终结果
+
+    def __init__(self, url, json_data):
+        super().__init__()
+        self._url = url
+        self._json = json_data
+
+    def run(self):
+        try:
+            r = requests.post(self._url, json=self._json, stream=True, timeout=120)
+            full_text = ''
+            for line in r.iter_lines(decode_unicode=True):
+                if line and line.startswith('data: '):
+                    chunk_text = line[6:]
+                    if chunk_text == '[DONE]':
+                        break
+                    if chunk_text.startswith('[ERROR]'):
+                        err = chunk_text[8:] if len(chunk_text) > 8 else '未知错误'
+                        self.finished.emit({'full_text': '', 'error': err})
+                        return
+                    full_text += chunk_text
+                    self.chunk.emit(chunk_text)  # 实时推送
+            self.finished.emit({'full_text': full_text, 'error': None})
+        except Exception as e:
+            self.finished.emit({'full_text': '', 'error': str(e)})
+
+
 class ApiWorker(QThread):
     """后台 API 调用线程"""
     finished = Signal(object)
@@ -2165,48 +2195,35 @@ class MainWindow(QMainWindow):
         self.gen_btn.setEnabled(False)
         self._show_think('')  # 清空思考面板
 
-        def do_stream():
-            """流式接收 AI 思考过程"""
-            try:
-                prompt = question + '\n\n请直接给出SQL语句，不要额外解释。'
-                r = requests.post(f'{API_BASE}/api/query/stream',
-                                  json={'question': prompt}, stream=True, timeout=120)
-                buffer = ''
-                full_text = ''
-                for line in r.iter_lines(decode_unicode=True):
-                    if line and line.startswith('data: '):
-                        chunk = line[6:]
-                        if chunk == '[DONE]':
-                            break
-                        if chunk.startswith('[ERROR]'):
-                            error_msg = chunk[8:] if len(chunk) > 8 else '未知错误'
-                            QTimer.singleShot(0, lambda e=error_msg: self._show_log(f'✗ {e}'))
-                            QTimer.singleShot(0, lambda e=error_msg: self._show_think(f'❌ 错误: {e}'))
-                            return {'full_text': '', 'error': error_msg}
-                        full_text += chunk
-                        buffer += chunk
-                        # 每3个字符更新一次 UI
-                        if len(buffer) >= 3:
-                            QTimer.singleShot(0, lambda t=buffer: self._append_think(t))
-                            buffer = ''
-                if buffer:
-                    QTimer.singleShot(0, lambda t=buffer: self._append_think(t))
+        prompt = question + '\n\n请直接给出SQL语句，不要额外解释。'
+        self._stream_worker = StreamWorker(f'{API_BASE}/api/query/stream',
+                                           {'question': prompt})
 
-                return {'full_text': full_text, 'error': None}
-            except Exception as e:
-                return {'full_text': '', 'error': str(e)}
+        # 实时更新思考面板
+        buf = []
+        def on_chunk(chunk):
+            buf.append(chunk)
+            if len(buf) >= 3:
+                self._append_think(''.join(buf))
+                buf.clear()
 
-        def callback(resp):
+        self._stream_worker.chunk.connect(on_chunk)
+
+        # 完成回调
+        def on_finished(resp):
+            if buf:
+                self._append_think(''.join(buf))
+                buf.clear()
             self.gen_btn.setText('生成 SQL')
             self.gen_btn.setEnabled(True)
             full = resp.get('full_text', '')
             error = resp.get('error', '')
 
             if error:
+                self._show_think(f'❌ 错误: {error}')
                 self.sql_text.setPlainText(f'-- 生成失败: {error}')
                 return
 
-            # 从流式文本中提取 SQL
             sql = _extract_sql_from_stream(full)
             if sql:
                 self.sql_text.setPlainText(sql)
@@ -2215,7 +2232,8 @@ class MainWindow(QMainWindow):
                 self.sql_text.setPlainText('-- AI 未生成 SQL，请查看思考过程')
                 self._append_log(f'[生成SQL] {question}\n{full[:300]}')
 
-        self._run_async(do_stream, callback)
+        self._stream_worker.finished.connect(on_finished)
+        self._stream_worker.start()
 
     # ── 执行 SQL ────────────────────────────
     def _execute_sql(self):
