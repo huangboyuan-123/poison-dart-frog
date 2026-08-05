@@ -556,13 +556,64 @@ class MainWindow(QMainWindow):
         self._c_collapsed = False
         self._c_saved_width = 0
 
+        # 无边框窗口 + 拖拽跟踪
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        self._drag_pos = None
         self._setup_ui()
         self._load_data()
 
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and event.position().y() < 34:
+            self._drag_pos = event.globalPosition().toPoint()
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._drag_pos is not None:
+            delta = event.globalPosition().toPoint() - self._drag_pos
+            self.move(self.pos() + delta)
+            self._drag_pos = event.globalPosition().toPoint()
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
+        super().mouseReleaseEvent(event)
+
     # ── UI 构建 ────────────────────────────
     def _setup_ui(self):
+        # ── 自定义标题栏 ──
+        titlebar = QWidget()
+        titlebar.setFixedHeight(34)
+        titlebar.setStyleSheet(f'background: #2B2B2B; border-bottom: 1px solid rgba(255,255,255,0.06);')
+        tb_layout = QHBoxLayout(titlebar)
+        tb_layout.setContentsMargins(10, 0, 0, 0)
+        tb_layout.setSpacing(0)
+
+        logo = QLabel('SQLAgent')
+        logo.setStyleSheet('color: #86909C; font-size: 12px; font-weight: 600; background: transparent; border: none;')
+        tb_layout.addWidget(logo)
+        tb_layout.addStretch()
+
+        # 窗口控制按钮
+        ctrl_style = 'QPushButton { background: transparent; border: none; color: #86909C; font-size: 14px; padding: 0 12px; } QPushButton:hover { background: rgba(255,255,255,0.06); } QPushButton#btnClose:hover { background: #E05555; color: white; }'
+        min_btn = QPushButton('─')
+        min_btn.setObjectName('btnMin')
+        min_btn.setStyleSheet(ctrl_style)
+        min_btn.clicked.connect(self.showMinimized)
+        tb_layout.addWidget(min_btn)
+
+        max_btn = QPushButton('□')
+        max_btn.setStyleSheet(ctrl_style)
+        max_btn.clicked.connect(lambda: self.showMaximized() if not self.isMaximized() else self.showNormal())
+        tb_layout.addWidget(max_btn)
+
+        close_btn = QPushButton('✕')
+        close_btn.setObjectName('btnClose')
+        close_btn.setStyleSheet(ctrl_style)
+        close_btn.clicked.connect(self.close)
+        tb_layout.addWidget(close_btn)
+
         # ── 菜单栏 ──
-        menubar = self.menuBar()
+        menubar = QMenuBar()
         menubar.setStyleSheet(f"""
             QMenuBar {{ background: {BG}; color: {MUTED}; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 2px 0; }}
             QMenuBar::item {{ padding: 4px 12px; }}
@@ -612,6 +663,9 @@ class MainWindow(QMainWindow):
         root_layout = QVBoxLayout(central)
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
+
+        root_layout.addWidget(titlebar)
+        root_layout.addWidget(menubar)
 
         # QStackedWidget: Page0=首页, Page1=MySQL, Page2=Redis
         self.stack = QStackedWidget()
