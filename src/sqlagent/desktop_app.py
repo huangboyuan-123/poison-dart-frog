@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox,
                                 QMessageBox,
                                 QPlainTextEdit, QPushButton, QSizePolicy,
                                 QSpacerItem, QSplitter, QStatusBar, QStyle,
-                                QTabWidget, QTableWidget, QTableWidgetItem,
+                                QTabBar, QTabWidget, QTableWidget, QTableWidgetItem,
                                 QTextEdit, QTreeWidget, QTreeWidgetItem,
                                 QVBoxLayout, QWidget, QListWidget,
                                 QListWidgetItem, QGroupBox, QStackedWidget)
@@ -808,6 +808,7 @@ class MainWindow(QMainWindow):
         self.data_tabs.tabCloseRequested.connect(self._close_data_tab)
         self.data_tabs.currentChanged.connect(self._on_tab_changed)
         self.data_tabs.setMovable(True)
+        self._tab_close_icon = QIcon(str(ICONS_DIR / 'cancel.png'))
         layout.addWidget(self.data_tabs, 1)
 
         # 编辑工具栏
@@ -1409,6 +1410,12 @@ class MainWindow(QMainWindow):
 
         idx = self.data_tabs.addTab(table, title)
         self.data_tabs.setCurrentIndex(idx)
+        # 自定义关闭图标
+        close_btn = QPushButton(self._tab_close_icon, '')
+        close_btn.setFixedSize(16, 16)
+        close_btn.setFlat(True)
+        close_btn.clicked.connect(lambda: self._close_data_tab(idx))
+        self.data_tabs.tabBar().setTabButton(idx, QTabBar.RightSide, close_btn)
 
         info = {'title': title, 'columns': columns, 'rows': rows_data or [],
                 'page': 0, 'sql': sql, 'is_temp': is_temp,
