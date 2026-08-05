@@ -95,7 +95,7 @@ QHeaderView::section {
 }
 QTabWidget::pane { border: none; background: #2B2B2B; }
 QTabBar::tab {
-    background: #3C3F41; color: #86909C; border: none; padding: 6px 16px;
+    background: #3C3F41; color: #86909C; border: none; padding: 6px 24px 6px 12px;
     margin-right: 2px; border-top-left-radius: 4px; border-top-right-radius: 4px;
 }
 QTabBar::tab:selected { background: #00D188; color: #A9B7C6; }
@@ -1417,7 +1417,8 @@ class MainWindow(QMainWindow):
         self.data_tabs.setCurrentIndex(idx)
         # 透明嵌入式的关闭图标
         close_btn = QPushButton(self._tab_close_icon, '')
-        close_btn.setFixedSize(14, 14)
+        close_btn.setFixedSize(20, 20)
+        close_btn.setIconSize(QSize(12, 12))
         close_btn.setFlat(True)
         close_btn.setStyleSheet('''
             QPushButton { background: transparent; border: none; padding: 0; }
