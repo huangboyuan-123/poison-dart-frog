@@ -694,7 +694,7 @@ class MainWindow(QMainWindow):
         panel_a = QWidget(); panel_b = QWidget(); panel_c = QWidget()
         self.panel_c = panel_c
         splitter.addWidget(panel_a); splitter.addWidget(panel_b); splitter.addWidget(panel_c)
-        splitter.setStretchFactor(0, 0); splitter.setStretchFactor(1, 40); splitter.setStretchFactor(2, 60)
+        splitter.setStretchFactor(0, 0); splitter.setStretchFactor(1, 55); splitter.setStretchFactor(2, 45)
         splitter.setHandleWidth(4); panel_a.setFixedWidth(200)
         self._build_panel_a(panel_a)
         self._build_panel_b(panel_b)
@@ -711,7 +711,7 @@ class MainWindow(QMainWindow):
         redis_splitter = QSplitter(Qt.Horizontal)
         ra = QWidget(); rb = QWidget(); rc = QWidget()
         redis_splitter.addWidget(ra); redis_splitter.addWidget(rb); redis_splitter.addWidget(rc)
-        redis_splitter.setStretchFactor(0, 0); redis_splitter.setStretchFactor(1, 35); redis_splitter.setStretchFactor(2, 65)
+        redis_splitter.setStretchFactor(0, 0); redis_splitter.setStretchFactor(1, 50); redis_splitter.setStretchFactor(2, 50)
         redis_splitter.setHandleWidth(4); ra.setFixedWidth(250)
         self._build_redis_panel_a(ra)
         self._build_redis_panel_b(rb)
