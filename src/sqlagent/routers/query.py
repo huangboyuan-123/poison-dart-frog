@@ -171,7 +171,13 @@ async def natural_language_query_stream(req: QueryRequest):
         result = agent.run(req.question)
 
         if not result.get("success"):
-            yield f"data: [ERROR] {result.get('error', '未知错误')}\n\n"
+            err = result.get('error', '未知错误')
+            # 简短提示：余额不足、网络错误等
+            if 'Insufficient Balance' in str(err) or '402' in str(err):
+                err = 'API 余额不足，请充值或更换 Key'
+            elif 'timeout' in str(err).lower():
+                err = '请求超时，请检查网络'
+            yield f"data: [ERROR] {err}\n\n"
             return
 
         output = result.get("output", "")
