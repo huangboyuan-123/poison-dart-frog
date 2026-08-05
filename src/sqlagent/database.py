@@ -227,6 +227,43 @@ class DatabaseManager:
         except SQLAlchemyError as e:
             return {"success": False, "error": str(e), "data": None}
 
+    def execute_sql_raw(self, sql_stmt, read_only: bool = True) -> Dict[str, Any]:
+        """执行参数化的 SQLAlchemy text() 语句（防SQL注入）。"""
+        try:
+            with self._engine.connect() as conn:
+                if read_only:
+                    trans = conn.begin()
+                    try:
+                        result = conn.execute(sql_stmt)
+                        if result.returns_rows:
+                            rows = [list(row) for row in result.fetchall()]
+                            columns = list(result.keys())
+                            affected = 0
+                        else:
+                            rows, columns = [], []
+                            affected = result.rowcount
+                        trans.rollback()
+                    except Exception:
+                        trans.rollback()
+                        raise
+                else:
+                    result = conn.execute(sql_stmt)
+                    if result.returns_rows:
+                        rows = [list(row) for row in result.fetchall()]
+                        columns = list(result.keys())
+                        affected = 0
+                    else:
+                        rows, columns = [], []
+                        affected = result.rowcount
+                    conn.commit()
+
+                return {
+                    "success": True, "error": None,
+                    "data": {"columns": columns, "rows": rows, "row_count": len(rows) or affected},
+                }
+        except SQLAlchemyError as e:
+            return {"success": False, "error": str(e), "data": None}
+
     def validate_sql(self, sql: str) -> Dict[str, Any]:
         """
         验证 SQL 语法（使用 EXPLAIN 而不实际执行）。
@@ -288,15 +325,14 @@ class DatabaseManager:
             tokens = stmt.split()
             first_word = tokens[0] if tokens else ""
 
-            # 跳过 CTE 的 WITH 关键字
+            # WITH CTE: 跳过 CTE 定义，找实际操作动词
             if first_word == "WITH" and len(tokens) > 1:
-                # 找到 SELECT/INSERT/... 之后的关键字
-                i = 1
-                while i < len(tokens) and tokens[i] in ("RECURSIVE",):
-                    i += 1
-                # 继续跳过 CTE 定义体，找实际语句关键字
-                # 简化处理：WITH ... SELECT 是只读的
-                continue
+                # 跳过 AS (...) 部分，检查 CTE 后的实际语句
+                # 简化为: 如果 SQL 包含写关键字则拒绝
+                for kw in write_keywords:
+                    if kw in stmt.upper():
+                        return False
+                return True
 
             if first_word in write_keywords:
                 return False
