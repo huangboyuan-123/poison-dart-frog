@@ -586,10 +586,13 @@ class MainWindow(QMainWindow):
         self._load_data()
 
     def _edge_test(self, pos):
-        """检测鼠标在窗口边缘的位置"""
+        """检测鼠标是否在窗口边缘 (4px 精确线检测)"""
         r = self.rect()
-        m = 6  # 边缘检测范围
-        l, t, ri, b = pos.x() < m, pos.y() < m, pos.x() > r.width() - m, pos.y() > r.height() - m
+        m = 4
+        l = 0 <= pos.x() < m
+        ri = r.width() - m < pos.x() <= r.width()
+        t = 0 <= pos.y() < m
+        b = r.height() - m < pos.y() <= r.height()
         if t and l: return Qt.TopLeftCorner
         if t and ri: return Qt.TopRightCorner
         if b and l: return Qt.BottomLeftCorner
@@ -613,8 +616,8 @@ class MainWindow(QMainWindow):
         super().mousePressEvent(event)
 
     _CURSOR_MAP = {
-        Qt.TopEdge: Qt.SizeVerCursor, Qt.BottomEdge: Qt.SizeVerCursor,
         Qt.LeftEdge: Qt.SizeHorCursor, Qt.RightEdge: Qt.SizeHorCursor,
+        Qt.TopEdge: Qt.SizeVerCursor, Qt.BottomEdge: Qt.SizeVerCursor,
         Qt.TopLeftCorner: Qt.SizeFDiagCursor, Qt.BottomRightCorner: Qt.SizeFDiagCursor,
         Qt.TopRightCorner: Qt.SizeBDiagCursor, Qt.BottomLeftCorner: Qt.SizeBDiagCursor,
     }
