@@ -33,12 +33,17 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox,
 # ═══════════════════════════════════════════
 API_BASE = 'http://localhost:8000'
 ICONS_DIR = Path(__file__).parent / 'static'
-BG = '#1E2128'
-MUTED = '#5A6270'
-SUCCESS_COLOR = '#3FB950'
-DANGER_COLOR = '#E05555'
-WARNING_COLOR = '#D29922'
-ACCENT_COLOR = '#00D188'
+BG = '#2B2B2B'
+PANEL = '#3C3F41'
+INPUT_BG = '#3C3F41'
+MUTED = '#808080'
+SUCCESS_COLOR = '#6A8759'
+DANGER_COLOR = '#BC3F3C'
+WARNING_COLOR = '#CC7832'
+ACCENT_COLOR = '#4A88C7'
+GRADIENT_START = '#8BC34A'
+GRADIENT_MID = '#4FC3F7'
+GRADIENT_END = '#F06292'
 
 DB_CONFIG_FILE = Path(__file__).parent.parent.parent / '.db_configs.json'
 HISTORY_FILE = Path.home() / '.sqlagent_history.json'
@@ -49,76 +54,76 @@ DANGER_KW = ['DROP TABLE', 'DROP DATABASE', 'TRUNCATE', 'DELETE FROM']
 # 暗色主题 Stylesheet
 # ═══════════════════════════════════════════
 DARK_QSS = """
-QMainWindow, QWidget { background: #1E2128; color: #E8E8E8; font-family: "Consolas","Microsoft YaHei"; font-size: 13px; }
+QMainWindow, QWidget { background: #2B2B2B; color: #A9B7C6; font-family: "JetBrains Mono","Consolas","Microsoft YaHei"; font-size: 13px; }
 QGroupBox { border: 1px solid rgba(255,255,255,0.06); border-radius: 4px; margin-top: 14px; padding-top: 14px; font-weight: bold; color: #86909C; }
 QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 6px; }
 QLineEdit, QPlainTextEdit, QTextEdit {
-    background: #2F343D; color: #E8E8E8; border: 1px solid rgba(255,255,255,0.06);
+    background: #3C3F41; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.06);
     border-radius: 4px; padding: 6px 8px; selection-background-color: #00D188;
 }
 QPlainTextEdit:focus, QTextEdit:focus, QLineEdit:focus {
     border: 1px solid #00D188;
 }
 QComboBox {
-    background: #2F343D; color: #E8E8E8; border: 1px solid rgba(255,255,255,0.06);
+    background: #3C3F41; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.06);
     border-radius: 4px; padding: 4px 8px; min-height: 20px;
 }
 QComboBox:hover { border-color: rgba(255,255,255,0.12); }
 QComboBox::drop-down { border: none; width: 20px; }
 QComboBox QAbstractItemView {
-    background: #272B33; color: #E8E8E8; selection-background-color: #00D188;
+    background: #3C3F41; color: #A9B7C6; selection-background-color: #00D188;
     border: 1px solid rgba(255,255,255,0.06); outline: none;
 }
 QPushButton {
-    background: #2F343D; color: #E8E8E8; border: 1px solid rgba(255,255,255,0.08);
+    background: #3C3F41; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.08);
     border-radius: 4px; padding: 5px 14px; min-height: 26px;
 }
-QPushButton:hover { background: #363B44; border-color: rgba(255,255,255,0.15); }
+QPushButton:hover { background: #4E5254; border-color: rgba(255,255,255,0.15); }
 QPushButton:pressed { background: #00D188; }
 QPushButton[accent="true"] { background: #00D188; border: none; font-weight: bold; }
 QPushButton[accent="true"]:hover { background: #00B076; }
 QPushButton[danger="true"] { background: #E05555; border: none; }
-QPushButton:disabled { background: #2F343D; color: #5A6270; }
+QPushButton:disabled { background: #3C3F41; color: #5A6270; }
 QTableWidget {
-    background: #272B33; color: #E8E8E8; gridline-color: rgba(255,255,255,0.04);
+    background: #3C3F41; color: #A9B7C6; gridline-color: rgba(255,255,255,0.04);
     border: none; selection-background-color: #00D188;
 }
 QTableWidget::item { padding: 2px 6px; }
 QHeaderView::section {
-    background: #2F343D; color: #86909C; border: none; border-bottom: 2px solid rgba(255,255,255,0.06);
+    background: #3C3F41; color: #86909C; border: none; border-bottom: 2px solid rgba(255,255,255,0.06);
     padding: 4px 8px; font-weight: bold; font-size: 11px;
 }
-QTabWidget::pane { border: none; background: #1E2128; }
+QTabWidget::pane { border: none; background: #2B2B2B; }
 QTabBar::tab {
-    background: #272B33; color: #86909C; border: none; padding: 6px 16px;
+    background: #3C3F41; color: #86909C; border: none; padding: 6px 16px;
     margin-right: 2px; border-top-left-radius: 4px; border-top-right-radius: 4px;
 }
-QTabBar::tab:selected { background: #00D188; color: #E8E8E8; }
-QTabBar::tab:hover:!selected { background: #363B44; }
+QTabBar::tab:selected { background: #00D188; color: #A9B7C6; }
+QTabBar::tab:hover:!selected { background: #4E5254; }
 QSplitter::handle { background: rgba(255,255,255,0.04); }
 QSplitter::handle:hover { background: #00D188; }
-QScrollBar:vertical { background: #1E2128; width: 6px; }
+QScrollBar:vertical { background: #2B2B2B; width: 6px; }
 QScrollBar::handle:vertical { background: #5A6270; border-radius: 3px; min-height: 30px; }
 QScrollBar::handle:vertical:hover { background: #86909C; }
-QScrollBar:horizontal { background: #1E2128; height: 6px; }
+QScrollBar:horizontal { background: #2B2B2B; height: 6px; }
 QScrollBar::handle:horizontal { background: #5A6270; border-radius: 3px; min-width: 30px; }
 QScrollBar::add-line, QScrollBar::sub-line { height: 0; width: 0; }
-QStatusBar { background: #1E2128; color: #86909C; border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; }
-QListWidget { background: #272B33; color: #E8E8E8; border: none; outline: none; }
+QStatusBar { background: #2B2B2B; color: #86909C; border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; }
+QListWidget { background: #3C3F41; color: #A9B7C6; border: none; outline: none; }
 QListWidget::item { padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
-QListWidget::item:hover { background: #363B44; }
+QListWidget::item:hover { background: #4E5254; }
 QListWidget::item:selected { background: #00D188; }
-QTreeWidget { background: #272B33; color: #E8E8E8; border: none; outline: none; }
+QTreeWidget { background: #3C3F41; color: #A9B7C6; border: none; outline: none; }
 QTreeWidget::item { padding: 3px 4px; }
-QTreeWidget::item:hover { background: #363B44; }
+QTreeWidget::item:hover { background: #4E5254; }
 QTreeWidget::item:selected { background: #00D188; }
 QTreeWidget::branch:has-children:!has-siblings:closed,
 QTreeWidget::branch:closed:has-children:has-siblings { border-image: none; }
 QCheckBox { color: #86909C; spacing: 6px; }
 QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid rgba(255,255,255,0.15); border-radius: 2px; }
 QCheckBox::indicator:checked { background: #00D188; border-color: #00D188; }
-QDialog { background: #1E2128; }
-QMenu { background: #272B33; color: #E8E8E8; border: 1px solid rgba(255,255,255,0.06); padding: 4px; }
+QDialog { background: #2B2B2B; }
+QMenu { background: #3C3F41; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.06); padding: 4px; }
 QMenu::item { padding: 6px 24px; border-radius: 2px; }
 QMenu::item:selected { background: #00D188; }
 """
@@ -151,9 +156,9 @@ class SqlHighlighter(QSyntaxHighlighter):
         super().__init__(parent)
         self.rules: List[tuple] = []
 
-        # 关键字 (蓝色加粗)
+        # 关键字 (Darcula橙)
         kw_fmt = QTextCharFormat()
-        kw_fmt.setForeground(QColor('#6CB6FF'))
+        kw_fmt.setForeground(QColor('#CC7832'))
         kw_fmt.setFontWeight(QFont.Bold)
         for kw in SQL_KEYWORDS:
             pattern = QRegularExpression(
@@ -162,15 +167,15 @@ class SqlHighlighter(QSyntaxHighlighter):
             )
             self.rules.append((pattern, kw_fmt))
 
-        # 字符串 (绿色)
+        # 字符串 (Darcula绿)
         str_fmt = QTextCharFormat()
-        str_fmt.setForeground(QColor('#96D0A0'))
+        str_fmt.setForeground(QColor('#6A8759'))
         self.rules.append((QRegularExpression(r"'[^']*'"), str_fmt))
         self.rules.append((QRegularExpression(r'"[^"]*"'), str_fmt))
 
-        # 数字 (橙色)
+        # 数字 (Darcula蓝)
         num_fmt = QTextCharFormat()
-        num_fmt.setForeground(QColor('#F0B679'))
+        num_fmt.setForeground(QColor('#6897BB'))
         self.rules.append((QRegularExpression(r'\b\d+\.?\d*\b'), num_fmt))
 
         # 注释 (灰色斜体)
@@ -623,7 +628,7 @@ class MainWindow(QMainWindow):
 
         title = QLabel('SQLAgent Desktop')
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet('font-size: 28px; font-weight: bold; color: #E8E8E8;')
+        title.setStyleSheet('font-size: 28px; font-weight: bold; color: #4A88C7;')
         home_layout.addWidget(title)
 
         subtitle = QLabel('选择数据源类型开始')
@@ -641,7 +646,7 @@ class MainWindow(QMainWindow):
         mysql_card.setCursor(Qt.CursorShape.PointingHandCursor)
         mysql_card.setStyleSheet(f"""
             QFrame {{ background: {BG}; border: 2px solid rgba(37,116,255,0.2); border-radius: 12px; }}
-            QFrame:hover {{ border-color: #00D188; background: #272B33; }}
+            QFrame:hover {{ border-color: #00D188; background: #3C3F41; }}
         """)
         mysql_card.mousePressEvent = lambda e: self._switch_workspace('mysql')
         ml = QVBoxLayout(mysql_card)
@@ -650,7 +655,7 @@ class MainWindow(QMainWindow):
         mi = QLabel('🐬'); mi.setAlignment(Qt.AlignCenter); mi.setStyleSheet('font-size: 56px; border:none;')
         ml.addWidget(mi)
         mt = QLabel('MySQL'); mt.setAlignment(Qt.AlignCenter)
-        mt.setStyleSheet('font-size: 20px; font-weight: bold; color: #E8E8E8; border:none;')
+        mt.setStyleSheet('font-size: 20px; font-weight: bold; color: #A9B7C6; border:none;')
         ml.addWidget(mt)
         md = QLabel('关系型数据库\n表结构 · SQL查询 · 数据编辑'); md.setAlignment(Qt.AlignCenter)
         md.setStyleSheet(f'font-size: 12px; color: {MUTED}; border:none;')
@@ -663,7 +668,7 @@ class MainWindow(QMainWindow):
         redis_card.setCursor(Qt.CursorShape.PointingHandCursor)
         redis_card.setStyleSheet(f"""
             QFrame {{ background: {BG}; border: 2px solid rgba(220,50,50,0.2); border-radius: 12px; }}
-            QFrame:hover {{ border-color: #DC3232; background: #272B33; }}
+            QFrame:hover {{ border-color: #DC3232; background: #3C3F41; }}
         """)
         redis_card.mousePressEvent = lambda e: self._switch_workspace('redis')
         rl = QVBoxLayout(redis_card)
@@ -672,7 +677,7 @@ class MainWindow(QMainWindow):
         ri = QLabel('🔴'); ri.setAlignment(Qt.AlignCenter); ri.setStyleSheet('font-size: 56px; border:none;')
         rl.addWidget(ri)
         rt = QLabel('Redis'); rt.setAlignment(Qt.AlignCenter)
-        rt.setStyleSheet('font-size: 20px; font-weight: bold; color: #E8E8E8; border:none;')
+        rt.setStyleSheet('font-size: 20px; font-weight: bold; color: #A9B7C6; border:none;')
         rl.addWidget(rt)
         rd = QLabel('键值数据库\n键浏览 · 值查看 · 缓存管理'); rd.setAlignment(Qt.AlignCenter)
         rd.setStyleSheet(f'font-size: 12px; color: {MUTED}; border:none;')
