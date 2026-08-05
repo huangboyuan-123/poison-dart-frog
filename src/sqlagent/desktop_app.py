@@ -33,12 +33,9 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox,
 # ═══════════════════════════════════════════
 API_BASE = 'http://localhost:8000'
 ICONS_DIR = Path(__file__).parent / 'static'
-# VS Code 配色
 BG = '#1E1E1E'
-SIDEBAR_BG = '#252526'
-PANEL = '#2D2D2D'
+PANEL = '#252526'
 INPUT_BG = '#3C3C3C'
-TITLEBAR_BG = '#323233'
 MUTED = '#858585'
 SUCCESS_COLOR = '#4EC9B0'
 DANGER_COLOR = '#F14C4C'
@@ -58,11 +55,11 @@ QMainWindow, QWidget { background: #1E1E1E; color: #A9B7C6; font-family: "Segoe 
 QGroupBox { border: 1px solid rgba(255,255,255,0.06); border-radius: 4px; margin-top: 14px; padding-top: 14px; font-weight: bold; color: #86909C; }
 QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 6px; }
 QLineEdit, QPlainTextEdit, QTextEdit {
-    background: #252526; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 4px; padding: 6px 8px; selection-background-color: #00D188;
+    background: #3C3C3C; color: #CCCCCC; border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 2px; padding: 6px 8px; selection-background-color: #007ACC;
 }
 QPlainTextEdit:focus, QTextEdit:focus, QLineEdit:focus {
-    border: 1px solid #00D188;
+    border: 1px solid #007ACC;
 }
 QComboBox {
     background: #252526; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.06);
@@ -71,22 +68,22 @@ QComboBox {
 QComboBox:hover { border-color: rgba(255,255,255,0.12); }
 QComboBox::drop-down { border: none; width: 20px; }
 QComboBox QAbstractItemView {
-    background: #252526; color: #A9B7C6; selection-background-color: #00D188;
+    background: #252526; color: #A9B7C6; selection-background-color: #007ACC;
     border: 1px solid rgba(255,255,255,0.06); outline: none;
 }
 QPushButton {
     background: #252526; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.08);
     border-radius: 4px; padding: 5px 14px; min-height: 26px;
 }
-QPushButton:hover { background: #383838; border-color: rgba(255,255,255,0.15); }
-QPushButton:pressed { background: #00D188; }
-QPushButton[accent="true"] { background: #00D188; border: none; font-weight: bold; }
+QPushButton:hover { background: #4E5254; border-color: rgba(255,255,255,0.15); }
+QPushButton:pressed { background: #007ACC; }
+QPushButton[accent="true"] { background: #007ACC; border: none; font-weight: bold; }
 QPushButton[accent="true"]:hover { background: #00B076; }
 QPushButton[danger="true"] { background: #E05555; border: none; }
 QPushButton:disabled { background: #252526; color: #5A6270; }
 QTableWidget {
     background: #252526; color: #A9B7C6; gridline-color: rgba(255,255,255,0.04);
-    border: none; selection-background-color: #00D188;
+    border: none; selection-background-color: #007ACC;
 }
 QTableWidget::item { padding: 2px 6px; }
 QHeaderView::section {
@@ -98,10 +95,10 @@ QTabBar::tab {
     background: #252526; color: #86909C; border: none; padding: 6px 16px;
     margin-right: 2px; border-top-left-radius: 4px; border-top-right-radius: 4px;
 }
-QTabBar::tab:selected { background: #00D188; color: #A9B7C6; }
-QTabBar::tab:hover:!selected { background: #383838; }
+QTabBar::tab:selected { background: #007ACC; color: #A9B7C6; }
+QTabBar::tab:hover:!selected { background: #4E5254; }
 QSplitter::handle { background: rgba(255,255,255,0.04); }
-QSplitter::handle:hover { background: #00D188; }
+QSplitter::handle:hover { background: #007ACC; }
 QScrollBar:vertical { background: #1E1E1E; width: 6px; }
 QScrollBar::handle:vertical { background: #5A6270; border-radius: 3px; min-height: 30px; }
 QScrollBar::handle:vertical:hover { background: #86909C; }
@@ -111,21 +108,21 @@ QScrollBar::add-line, QScrollBar::sub-line { height: 0; width: 0; }
 QStatusBar { background: #1E1E1E; color: #86909C; border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; }
 QListWidget { background: #252526; color: #A9B7C6; border: none; outline: none; }
 QListWidget::item { padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
-QListWidget::item:hover { background: #383838; }
-QListWidget::item:selected { background: #00D188; }
+QListWidget::item:hover { background: #4E5254; }
+QListWidget::item:selected { background: #007ACC; }
 QTreeWidget { background: #252526; color: #A9B7C6; border: none; outline: none; }
 QTreeWidget::item { padding: 3px 4px; }
-QTreeWidget::item:hover { background: #383838; }
-QTreeWidget::item:selected { background: #00D188; }
+QTreeWidget::item:hover { background: #4E5254; }
+QTreeWidget::item:selected { background: #007ACC; }
 QTreeWidget::branch:has-children:!has-siblings:closed,
 QTreeWidget::branch:closed:has-children:has-siblings { border-image: none; }
 QCheckBox { color: #86909C; spacing: 6px; }
 QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid rgba(255,255,255,0.15); border-radius: 2px; }
-QCheckBox::indicator:checked { background: #00D188; border-color: #00D188; }
+QCheckBox::indicator:checked { background: #007ACC; border-color: #007ACC; }
 QDialog { background: #1E1E1E; }
 QMenu { background: #252526; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.06); padding: 4px; }
 QMenu::item { padding: 6px 24px; border-radius: 2px; }
-QMenu::item:selected { background: #00D188; }
+QMenu::item:selected { background: #007ACC; }
 """
 
 # ═══════════════════════════════════════════
@@ -646,7 +643,7 @@ class MainWindow(QMainWindow):
         mysql_card.setCursor(Qt.CursorShape.PointingHandCursor)
         mysql_card.setStyleSheet(f"""
             QFrame {{ background: {BG}; border: 2px solid rgba(37,116,255,0.2); border-radius: 12px; }}
-            QFrame:hover {{ border-color: #00D188; background: #252526; }}
+            QFrame:hover {{ border-color: #007ACC; background: #252526; }}
         """)
         mysql_card.mousePressEvent = lambda e: self._switch_workspace('mysql')
         ml = QVBoxLayout(mysql_card)
@@ -1410,10 +1407,11 @@ class MainWindow(QMainWindow):
         info = {'title': title, 'columns': columns, 'rows': rows_data or [],
                 'page': 0, 'sql': sql, 'is_temp': is_temp,
                 'db_name': db_name, 'table_name': title.replace('📋 ', '').replace('🔍 ', ''),
-                'pk_col': pk_col, 'fk_map': {}}
+                'pk_col': pk_col, 'fk_map': {}}  # fk_map: col_index → (ref_db, ref_table, ref_col)
         self._tab_data[idx] = info
         if rows_data:
             self._render_tab_page(idx)
+        # 更新编辑按钮状态
         self._update_edit_buttons()
         return idx
 
@@ -1421,12 +1419,17 @@ class MainWindow(QMainWindow):
         """关闭Tab"""
         if self.data_tabs.count() <= 1:
             return
+        # 重建 tab_data 映射
+        old_keys = list(self._tab_data.keys())
         self.data_tabs.removeTab(idx)
-        # 重建索引
-        self._tab_data = {
-            i: self._tab_data.get(k)
-            for i, k in enumerate(k for k in self._tab_data if k != idx)
-        }
+        new_data = {}
+        new_idx = 0
+        for old_key in old_keys:
+            if old_key == idx:
+                continue
+            new_data[new_idx] = self._tab_data[old_key]
+            new_idx += 1
+        self._tab_data = new_data
 
     def _current_table(self) -> QTableWidget:
         """获取当前Tab的表格"""
@@ -1434,6 +1437,7 @@ class MainWindow(QMainWindow):
         return w if isinstance(w, QTableWidget) else None
 
     def _current_tab_info(self) -> Dict:
+        """获取当前Tab信息"""
         return self._tab_data.get(self.data_tabs.currentIndex(),
                                   {'rows': [], 'page': 0, 'columns': [], 'title': '', 'sql': '', 'is_temp': False})
 
@@ -2251,6 +2255,10 @@ class MainWindow(QMainWindow):
         worker = ApiWorker(target)
         worker.finished.connect(callback)
         worker.start()
+        # 保持引用防止 GC
+        if not hasattr(self, '_workers'):
+            self._workers = []
+        self._workers.append(worker)
 
 
 # ═══════════════════════════════════════════
