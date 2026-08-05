@@ -765,6 +765,11 @@ class MainWindow(QMainWindow):
         self.sidebar_combo.setMinimumHeight(24)
         self.sidebar_combo.currentIndexChanged.connect(self._on_sidebar_db_select)
         conn_row.addWidget(self.sidebar_combo, 1)
+        del_btn = QPushButton('✕')
+        del_btn.setFixedSize(22, 22)
+        del_btn.setToolTip('删除当前连接')
+        del_btn.clicked.connect(self._delete_db_config)
+        conn_row.addWidget(del_btn)
         mgr_btn = QPushButton('⚙')
         mgr_btn.setFixedSize(22, 22)
         mgr_btn.setToolTip('管理连接')
@@ -1964,6 +1969,23 @@ class MainWindow(QMainWindow):
         self.rb_status.setStyleSheet('')
 
     # ── DB 操作 ─────────────────────────────
+    def _delete_db_config(self):
+        """删除当前选中的数据库连接"""
+        if not _db_configs:
+            return
+        idx = self.sidebar_combo.currentIndex()
+        if idx < 0 or idx >= len(_db_configs):
+            return
+        cfg = _db_configs[idx]
+        reply = QMessageBox.question(self, '确认删除',
+                                      f'确定删除连接 "{cfg["name"]}" 吗？')
+        if reply != QMessageBox.Yes:
+            return
+        del _db_configs[idx]
+        save_db_configs()
+        self._refresh_db_combo()
+        self._load_schema_tree()
+
     def _add_db_dialog(self):
         dlg = DbConfigDialog(self)
         if dlg.exec() == QDialog.Accepted:
