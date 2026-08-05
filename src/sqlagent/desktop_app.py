@@ -605,29 +605,27 @@ class MainWindow(QMainWindow):
             edge = self._edge_test(event.position().toPoint())
             if edge and self.windowHandle():
                 # 先设光标再拉伸
-                cursors = {Qt.TopEdge: Qt.SizeVerCursor, Qt.BottomEdge: Qt.SizeVerCursor,
-                           Qt.LeftEdge: Qt.SizeHorCursor, Qt.RightEdge: Qt.SizeHorCursor,
-                           Qt.TopLeftCorner: Qt.SizeFDiagCursor, Qt.BottomRightCorner: Qt.SizeFDiagCursor,
-                           Qt.TopRightCorner: Qt.SizeBDiagCursor, Qt.BottomLeftCorner: Qt.SizeBDiagCursor}
-                self.setCursor(Qt.CursorShape(cursors.get(edge, Qt.ArrowCursor)))
+                self.setCursor(Qt.CursorShape(self._CURSOR_MAP.get(edge, Qt.ArrowCursor)))
                 self.windowHandle().startSystemResize(edge)
                 return
             if event.position().y() < 34:
                 self._drag_pos = event.globalPosition().toPoint()
         super().mousePressEvent(event)
 
+    _CURSOR_MAP = {
+        Qt.TopEdge: Qt.SizeVerCursor, Qt.BottomEdge: Qt.SizeVerCursor,
+        Qt.LeftEdge: Qt.SizeHorCursor, Qt.RightEdge: Qt.SizeHorCursor,
+        Qt.TopLeftCorner: Qt.SizeFDiagCursor, Qt.BottomRightCorner: Qt.SizeFDiagCursor,
+        Qt.TopRightCorner: Qt.SizeBDiagCursor, Qt.BottomLeftCorner: Qt.SizeBDiagCursor,
+    }
+
     def mouseMoveEvent(self, event):
-        # 先更新光标（拖拽和边缘检测都要）
         edge = self._edge_test(event.position().toPoint())
-        cursors = {Qt.TopEdge: Qt.SizeVerCursor, Qt.BottomEdge: Qt.SizeVerCursor,
-                   Qt.LeftEdge: Qt.SizeHorCursor, Qt.RightEdge: Qt.SizeHorCursor,
-                   Qt.TopLeftCorner: Qt.SizeFDiagCursor, Qt.BottomRightCorner: Qt.SizeFDiagCursor,
-                   Qt.TopRightCorner: Qt.SizeBDiagCursor, Qt.BottomLeftCorner: Qt.SizeBDiagCursor}
-        override = cursors.get(edge)
-        if override:
+        override = self._CURSOR_MAP.get(edge)
+        if override is not None:
             self.setCursor(Qt.CursorShape(override))
-        elif self._drag_pos is None:
-            self.unsetCursor()
+        else:
+            self.setCursor(Qt.CursorShape(Qt.ArrowCursor))  # 强制恢复箭头
 
         if self._drag_pos is not None:
             delta = event.globalPosition().toPoint() - self._drag_pos
