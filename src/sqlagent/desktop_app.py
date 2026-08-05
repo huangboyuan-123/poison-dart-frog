@@ -579,6 +579,8 @@ class MainWindow(QMainWindow):
         # 无边框窗口 + 圆角 + 拖拽跟踪
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setMouseTracking(True)
+        self.setAttribute(Qt.WA_Hover)
         self._drag_pos = None
         self._setup_ui()
         self._load_data()
@@ -602,6 +604,12 @@ class MainWindow(QMainWindow):
         if event.button() == Qt.LeftButton:
             edge = self._edge_test(event.position().toPoint())
             if edge and self.windowHandle():
+                # 先设光标再拉伸
+                cursors = {Qt.TopEdge: Qt.SizeVerCursor, Qt.BottomEdge: Qt.SizeVerCursor,
+                           Qt.LeftEdge: Qt.SizeHorCursor, Qt.RightEdge: Qt.SizeHorCursor,
+                           Qt.TopLeftCorner: Qt.SizeFDiagCursor, Qt.BottomRightCorner: Qt.SizeFDiagCursor,
+                           Qt.TopRightCorner: Qt.SizeBDiagCursor, Qt.BottomLeftCorner: Qt.SizeBDiagCursor}
+                self.setCursor(Qt.CursorShape(cursors.get(edge, Qt.ArrowCursor)))
                 self.windowHandle().startSystemResize(edge)
                 return
             if event.position().y() < 34:
@@ -609,18 +617,22 @@ class MainWindow(QMainWindow):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        if self._drag_pos is not None:
-            delta = event.globalPosition().toPoint() - self._drag_pos
-            self.move(self.pos() + delta)
-            self._drag_pos = event.globalPosition().toPoint()
-            return
-        # 更新鼠标样式
+        # 先更新光标（拖拽和边缘检测都要）
         edge = self._edge_test(event.position().toPoint())
         cursors = {Qt.TopEdge: Qt.SizeVerCursor, Qt.BottomEdge: Qt.SizeVerCursor,
                    Qt.LeftEdge: Qt.SizeHorCursor, Qt.RightEdge: Qt.SizeHorCursor,
                    Qt.TopLeftCorner: Qt.SizeFDiagCursor, Qt.BottomRightCorner: Qt.SizeFDiagCursor,
                    Qt.TopRightCorner: Qt.SizeBDiagCursor, Qt.BottomLeftCorner: Qt.SizeBDiagCursor}
-        self.setCursor(cursors.get(edge, Qt.ArrowCursor))
+        override = cursors.get(edge)
+        if override:
+            self.setCursor(Qt.CursorShape(override))
+        elif self._drag_pos is None:
+            self.unsetCursor()
+
+        if self._drag_pos is not None:
+            delta = event.globalPosition().toPoint() - self._drag_pos
+            self.move(self.pos() + delta)
+            self._drag_pos = event.globalPosition().toPoint()
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
