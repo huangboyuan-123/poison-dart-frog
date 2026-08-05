@@ -128,6 +128,31 @@ QMenu::item { padding: 6px 24px; border-radius: 2px; }
 QMenu::item:selected { background: #00BFA5; }
 """
 
+def _md_to_html(text: str) -> str:
+    """简单 Markdown → HTML 转换"""
+    import html
+    text = html.escape(text)
+    # 代码块 ```...```
+    text = re.sub(r'```(\w*)\n(.*?)```', r'<pre style="background:#1E1E1E;padding:8px;border-radius:4px;"><code>\2</code></pre>', text, flags=re.DOTALL)
+    # 行内代码 `...`
+    text = re.sub(r'`([^`]+)`', r'<code style="background:#333;padding:1px 4px;border-radius:2px;">\1</code>', text)
+    # 加粗
+    text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+    # 斜体
+    text = re.sub(r'\*(.+?)\*', r'<i>\1</i>', text)
+    # 标题
+    text = re.sub(r'^### (.+)$', r'<h4>\1</h4>', text, flags=re.MULTILINE)
+    text = re.sub(r'^## (.+)$', r'<h3>\1</h3>', text, flags=re.MULTILINE)
+    text = re.sub(r'^# (.+)$', r'<h2>\1</h2>', text, flags=re.MULTILINE)
+    # 分隔线
+    text = re.sub(r'^---$', r'<hr>', text, flags=re.MULTILINE)
+    # 无序列表
+    text = re.sub(r'^- (.+)$', r'<li>\1</li>', text, flags=re.MULTILINE)
+    # 换行 → <br>
+    text = text.replace('\n', '<br>')
+    return f'<div style="color:#A9B7C6;line-height:1.6;">{text}</div>'
+
+
 def _extract_sql_from_stream(text: str) -> str:
     """从流式文本中提取 SQL 语句"""
     # 匹配 ```sql ... ``` 代码块
@@ -832,14 +857,19 @@ class MainWindow(QMainWindow):
         mysql_ws_layout.setContentsMargins(0, 0, 0, 0)
         mysql_ws_layout.setSpacing(0)
         splitter = QSplitter(Qt.Horizontal)
-        panel_a = QWidget(); panel_b = QWidget(); panel_c = QWidget()
-        self.panel_c = panel_c
-        splitter.addWidget(panel_a); splitter.addWidget(panel_b); splitter.addWidget(panel_c)
-        splitter.setStretchFactor(0, 0); splitter.setStretchFactor(1, 55); splitter.setStretchFactor(2, 45)
+        panel_a = QWidget(); panel_b = QWidget(); panel_c = QWidget(); panel_d = QWidget()
+        self.panel_c = panel_c; self.panel_d = panel_d
+        splitter.addWidget(panel_a); splitter.addWidget(panel_b)
+        splitter.addWidget(panel_c); splitter.addWidget(panel_d)
+        splitter.setStretchFactor(0, 0); splitter.setStretchFactor(1, 40)
+        splitter.setStretchFactor(2, 35); splitter.setStretchFactor(3, 0)
         splitter.setHandleWidth(4); panel_a.setFixedWidth(200)
         self._build_panel_a(panel_a)
         self._build_panel_b(panel_b)
         self._build_panel_c(panel_c)
+        self._build_panel_d(panel_d)
+        self._splitter = splitter  # 保存引用用于折叠D栏
+        panel_d.hide()
         mysql_ws_layout.addWidget(splitter, 1)
         self.stack.addWidget(mysql_ws)  # index 1
 
@@ -1013,6 +1043,59 @@ class MainWindow(QMainWindow):
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             tbl.setItem(0, 0, item)
 
+    # ═══ D栏: AI思考过程 (可折叠) ═══
+    def _build_panel_d(self, parent: QWidget):
+        layout = QVBoxLayout(parent)
+        layout.setContentsMargins(4, 8, 8, 4)
+        layout.setSpacing(4)
+
+        hdr = QHBoxLayout()
+        hdr.addWidget(QLabel('💭 思考过程'))
+        hdr.addStretch()
+        self.d_close_btn = QPushButton('✕')
+        self.d_close_btn.setFixedSize(20, 20)
+        self.d_close_btn.setFlat(True)
+        self.d_close_btn.setStyleSheet('QPushButton { background: transparent; border: none; color: #86909C; } QPushButton:hover { color: #E05555; }')
+        self.d_close_btn.clicked.connect(self._toggle_panel_d)
+        hdr.addWidget(self.d_close_btn)
+        layout.addLayout(hdr)
+
+        self.think_text = QTextEdit()
+        self.think_text.setReadOnly(True)
+        self.think_text.setFont(QFont('Consolas', 10))
+        layout.addWidget(self.think_text, 1)
+
+    def _toggle_panel_d(self):
+        """切换 D 栏显示/隐藏"""
+        if self.panel_d.isVisible():
+            self.panel_d.hide()
+            self._splitter.setStretchFactor(3, 0)
+        else:
+            self.panel_d.show()
+            self._splitter.setStretchFactor(3, 25)
+            self._splitter.setStretchFactor(2, 30)
+
+    def _show_think(self, text: str):
+        """D栏: 渲染 Markdown 思考过程"""
+        html = _md_to_html(text)
+        self.think_text.setHtml(html)
+        # 自动显示D栏
+        if not self.panel_d.isVisible():
+            self._toggle_panel_d()
+
+    def _append_think(self, text: str):
+        """D栏: 追加思考内容(流式)"""
+        # 累积文本
+        if not hasattr(self, '_think_buffer'):
+            self._think_buffer = ''
+        self._think_buffer += text
+        html = _md_to_html(self._think_buffer)
+        self.think_text.setHtml(html)
+        self.think_text.verticalScrollBar().setValue(
+            self.think_text.verticalScrollBar().maximum())
+        if not self.panel_d.isVisible():
+            self._toggle_panel_d()
+
     # ═══ C栏: AI助手 + 日志 ═══
     def _build_panel_c(self, parent: QWidget):
         layout = QVBoxLayout(parent)
@@ -1026,6 +1109,10 @@ class MainWindow(QMainWindow):
         self.collapse_btn.setFixedHeight(20)
         self.collapse_btn.clicked.connect(self._toggle_panel_c)
         toggle_row.addWidget(self.collapse_btn)
+        think_toggle = QPushButton('💭 思考')
+        think_toggle.setFixedHeight(20)
+        think_toggle.clicked.connect(self._toggle_panel_d)
+        toggle_row.addWidget(think_toggle)
         layout.addLayout(toggle_row)
 
         # DB 配置
@@ -1095,13 +1182,6 @@ class MainWindow(QMainWindow):
 
         self.history_list = QListWidget()
         self.history_list.itemDoubleClicked.connect(self._on_history_click)
-        # 思考过程
-        self.think_text = QTextEdit()
-        self.think_text.setReadOnly(True)
-        self.think_text.setFont(QFont('Consolas', 10))
-        self.tabs.addTab(self.think_text, '思考过程')
-        self._show_think('AI 思考过程将在这里实时显示...')
-
         self.tabs.addTab(self.history_list, '历史记录')
         layout.addWidget(self.tabs)
 
@@ -2193,7 +2273,7 @@ class MainWindow(QMainWindow):
             return
         self.gen_btn.setText('生成中...')
         self.gen_btn.setEnabled(False)
-        self._show_think('')  # 清空思考面板
+        self._think_buffer = ''  # 清空思考缓存
 
         prompt = question + '\n\n请详细分析并给出SQL语句。先查看表结构，再逐步生成正确的SQL。'
         self._stream_worker = StreamWorker(f'{API_BASE}/api/query/stream',
