@@ -33,14 +33,17 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox,
 # ═══════════════════════════════════════════
 API_BASE = 'http://localhost:8000'
 ICONS_DIR = Path(__file__).parent / 'static'
-BG = '#1E1E1E'
-PANEL = '#252526'
-INPUT_BG = '#3C3C3C'
-MUTED = '#858585'
-SUCCESS_COLOR = '#4EC9B0'
-DANGER_COLOR = '#F14C4C'
-WARNING_COLOR = '#CCA700'
-ACCENT_COLOR = '#007ACC'
+BG = '#2B2B2B'
+PANEL = '#3C3F41'
+INPUT_BG = '#3C3F41'
+MUTED = '#808080'
+SUCCESS_COLOR = '#6A8759'
+DANGER_COLOR = '#BC3F3C'
+WARNING_COLOR = '#CC7832'
+ACCENT_COLOR = '#4A88C7'
+GRADIENT_START = '#8BC34A'
+GRADIENT_MID = '#4FC3F7'
+GRADIENT_END = '#F06292'
 
 DB_CONFIG_FILE = Path(__file__).parent.parent.parent / '.db_configs.json'
 HISTORY_FILE = Path.home() / '.sqlagent_history.json'
@@ -51,78 +54,78 @@ DANGER_KW = ['DROP TABLE', 'DROP DATABASE', 'TRUNCATE', 'DELETE FROM']
 # 暗色主题 Stylesheet
 # ═══════════════════════════════════════════
 DARK_QSS = """
-QMainWindow, QWidget { background: #1E1E1E; color: #A9B7C6; font-family: "Segoe UI","Cascadia Code","Consolas","Microsoft YaHei"; font-size: 13px; }
+QMainWindow, QWidget { background: #2B2B2B; color: #A9B7C6; font-family: "JetBrains Mono","Consolas","Microsoft YaHei"; font-size: 13px; }
 QGroupBox { border: 1px solid rgba(255,255,255,0.06); border-radius: 4px; margin-top: 14px; padding-top: 14px; font-weight: bold; color: #86909C; }
 QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 6px; }
 QLineEdit, QPlainTextEdit, QTextEdit {
-    background: #3C3C3C; color: #CCCCCC; border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 2px; padding: 6px 8px; selection-background-color: #007ACC;
+    background: #3C3F41; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 4px; padding: 6px 8px; selection-background-color: #00D188;
 }
 QPlainTextEdit:focus, QTextEdit:focus, QLineEdit:focus {
-    border: 1px solid #007ACC;
+    border: 1px solid #00D188;
 }
 QComboBox {
-    background: #252526; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.06);
+    background: #3C3F41; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.06);
     border-radius: 4px; padding: 4px 8px; min-height: 20px;
 }
 QComboBox:hover { border-color: rgba(255,255,255,0.12); }
 QComboBox::drop-down { border: none; width: 20px; }
 QComboBox QAbstractItemView {
-    background: #252526; color: #A9B7C6; selection-background-color: #007ACC;
+    background: #3C3F41; color: #A9B7C6; selection-background-color: #00D188;
     border: 1px solid rgba(255,255,255,0.06); outline: none;
 }
 QPushButton {
-    background: #252526; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.08);
+    background: #3C3F41; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.08);
     border-radius: 4px; padding: 5px 14px; min-height: 26px;
 }
 QPushButton:hover { background: #4E5254; border-color: rgba(255,255,255,0.15); }
-QPushButton:pressed { background: #007ACC; }
-QPushButton[accent="true"] { background: #007ACC; border: none; font-weight: bold; }
+QPushButton:pressed { background: #00D188; }
+QPushButton[accent="true"] { background: #00D188; border: none; font-weight: bold; }
 QPushButton[accent="true"]:hover { background: #00B076; }
 QPushButton[danger="true"] { background: #E05555; border: none; }
-QPushButton:disabled { background: #252526; color: #5A6270; }
+QPushButton:disabled { background: #3C3F41; color: #5A6270; }
 QTableWidget {
-    background: #252526; color: #A9B7C6; gridline-color: rgba(255,255,255,0.04);
-    border: none; selection-background-color: #007ACC;
+    background: #3C3F41; color: #A9B7C6; gridline-color: rgba(255,255,255,0.04);
+    border: none; selection-background-color: #00D188;
 }
 QTableWidget::item { padding: 2px 6px; }
 QHeaderView::section {
-    background: #252526; color: #86909C; border: none; border-bottom: 2px solid rgba(255,255,255,0.06);
+    background: #3C3F41; color: #86909C; border: none; border-bottom: 2px solid rgba(255,255,255,0.06);
     padding: 4px 8px; font-weight: bold; font-size: 11px;
 }
-QTabWidget::pane { border: none; background: #1E1E1E; }
+QTabWidget::pane { border: none; background: #2B2B2B; }
 QTabBar::tab {
-    background: #252526; color: #86909C; border: none; padding: 6px 16px;
+    background: #3C3F41; color: #86909C; border: none; padding: 6px 16px;
     margin-right: 2px; border-top-left-radius: 4px; border-top-right-radius: 4px;
 }
-QTabBar::tab:selected { background: #007ACC; color: #A9B7C6; }
+QTabBar::tab:selected { background: #00D188; color: #A9B7C6; }
 QTabBar::tab:hover:!selected { background: #4E5254; }
 QSplitter::handle { background: rgba(255,255,255,0.04); }
-QSplitter::handle:hover { background: #007ACC; }
-QScrollBar:vertical { background: #1E1E1E; width: 6px; }
+QSplitter::handle:hover { background: #00D188; }
+QScrollBar:vertical { background: #2B2B2B; width: 6px; }
 QScrollBar::handle:vertical { background: #5A6270; border-radius: 3px; min-height: 30px; }
 QScrollBar::handle:vertical:hover { background: #86909C; }
-QScrollBar:horizontal { background: #1E1E1E; height: 6px; }
+QScrollBar:horizontal { background: #2B2B2B; height: 6px; }
 QScrollBar::handle:horizontal { background: #5A6270; border-radius: 3px; min-width: 30px; }
 QScrollBar::add-line, QScrollBar::sub-line { height: 0; width: 0; }
-QStatusBar { background: #1E1E1E; color: #86909C; border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; }
-QListWidget { background: #252526; color: #A9B7C6; border: none; outline: none; }
+QStatusBar { background: #2B2B2B; color: #86909C; border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; }
+QListWidget { background: #3C3F41; color: #A9B7C6; border: none; outline: none; }
 QListWidget::item { padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.03); }
 QListWidget::item:hover { background: #4E5254; }
-QListWidget::item:selected { background: #007ACC; }
-QTreeWidget { background: #252526; color: #A9B7C6; border: none; outline: none; }
+QListWidget::item:selected { background: #00D188; }
+QTreeWidget { background: #3C3F41; color: #A9B7C6; border: none; outline: none; }
 QTreeWidget::item { padding: 3px 4px; }
 QTreeWidget::item:hover { background: #4E5254; }
-QTreeWidget::item:selected { background: #007ACC; }
+QTreeWidget::item:selected { background: #00D188; }
 QTreeWidget::branch:has-children:!has-siblings:closed,
 QTreeWidget::branch:closed:has-children:has-siblings { border-image: none; }
 QCheckBox { color: #86909C; spacing: 6px; }
 QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid rgba(255,255,255,0.15); border-radius: 2px; }
-QCheckBox::indicator:checked { background: #007ACC; border-color: #007ACC; }
-QDialog { background: #1E1E1E; }
-QMenu { background: #252526; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.06); padding: 4px; }
+QCheckBox::indicator:checked { background: #00D188; border-color: #00D188; }
+QDialog { background: #2B2B2B; }
+QMenu { background: #3C3F41; color: #A9B7C6; border: 1px solid rgba(255,255,255,0.06); padding: 4px; }
 QMenu::item { padding: 6px 24px; border-radius: 2px; }
-QMenu::item:selected { background: #007ACC; }
+QMenu::item:selected { background: #00D188; }
 """
 
 # ═══════════════════════════════════════════
@@ -643,7 +646,7 @@ class MainWindow(QMainWindow):
         mysql_card.setCursor(Qt.CursorShape.PointingHandCursor)
         mysql_card.setStyleSheet(f"""
             QFrame {{ background: {BG}; border: 2px solid rgba(37,116,255,0.2); border-radius: 12px; }}
-            QFrame:hover {{ border-color: #007ACC; background: #252526; }}
+            QFrame:hover {{ border-color: #00D188; background: #3C3F41; }}
         """)
         mysql_card.mousePressEvent = lambda e: self._switch_workspace('mysql')
         ml = QVBoxLayout(mysql_card)
@@ -665,7 +668,7 @@ class MainWindow(QMainWindow):
         redis_card.setCursor(Qt.CursorShape.PointingHandCursor)
         redis_card.setStyleSheet(f"""
             QFrame {{ background: {BG}; border: 2px solid rgba(220,50,50,0.2); border-radius: 12px; }}
-            QFrame:hover {{ border-color: #DC3232; background: #252526; }}
+            QFrame:hover {{ border-color: #DC3232; background: #3C3F41; }}
         """)
         redis_card.mousePressEvent = lambda e: self._switch_workspace('redis')
         rl = QVBoxLayout(redis_card)
