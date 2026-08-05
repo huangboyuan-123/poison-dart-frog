@@ -567,7 +567,7 @@ class _RoundedWidget(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle('SQLAgent Desktop')
+        self.setWindowTitle('箭毒蛙 — AI+SQL数据库操纵工具')
         self.resize(1200, 780)
         self.setMinimumSize(900, 600)
 
@@ -609,7 +609,7 @@ class MainWindow(QMainWindow):
         tb_layout.setContentsMargins(10, 0, 0, 0)
         tb_layout.setSpacing(0)
 
-        logo = QLabel('SQLAgent')
+        logo = QLabel('箭毒蛙——AI+SQL数据库操纵工具')
         logo.setStyleSheet('color: #86909C; font-size: 12px; font-weight: 600; background: transparent; border: none;')
         tb_layout.addWidget(logo)
         tb_layout.addStretch()
@@ -698,7 +698,7 @@ class MainWindow(QMainWindow):
         home_layout.setAlignment(Qt.AlignCenter)
         home_layout.setSpacing(20)
 
-        title = QLabel('SQLAgent Desktop')
+        title = QLabel('箭毒蛙 — AI+SQL数据库操纵工具')
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet('font-size: 28px; font-weight: bold; color: #4A88C7;')
         home_layout.addWidget(title)

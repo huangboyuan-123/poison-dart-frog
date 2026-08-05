@@ -1,128 +1,154 @@
-# SQLAgent
+# 箭毒蛙 — AI + SQL 数据库操纵工具
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com)
-[![Docker](https://img.shields.io/badge/Docker-ready-2496ED.svg)](https://docker.com)
+[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://python.org)
+[![PySide6](https://img.shields.io/badge/GUI-PySide6-41CD52.svg)](https://doc.qt.io/qtforpython-6/)
+[![FastAPI](https://img.shields.io/badge/API-FastAPI-009688.svg)](https://fastapi.tiangolo.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-> 🤖 AI 驱动的 MySQL 数据库操控 Agent — REST API 接口，用自然语言查询数据库
+> 🐸 箭毒蛙 — 集 AI 自然语言交互、SQL 执行、数据可视编辑于一体的数据库桌面管理工具。支持 MySQL 和 Redis 双数据源。
 
-SQLAgent 是一个基于 **FastAPI + LangChain + MySQL** 的智能数据库操控系统。提供 HTTP API 接口，将自然语言转换为 SQL 并执行，返回结构化结果。
+---
 
-## ✨ 功能
+## ✨ 功能亮点
 
-- 🗣️ **自然语言转 SQL** — 用日常语言描述需求，自动生成 MySQL 查询
-- 🔌 **REST API 接口** — FastAPI 构建，Swagger 自动文档
-- 🧠 **LangChain Agent** — LLM 驱动的智能工具调用链
-- 🐳 **Docker 一键部署** — docker-compose 编排 API + MySQL
-- 🛡️ **安全只读模式** — 默认阻止写操作，生产安全
-- 📊 **Schema 自动分析** — 自动读取 information_schema，理解表结构
+### 🤖 AI 智能助手
+- **自然语言 → SQL**：用中文描述需求，AI 自动生成并执行 SQL
+- **自然语言 → Redis 命令**：支持 String/Hash/List/Set/ZSet 全类型
+- **上下文感知**：自动读取数据库 Schema，生成精准查询
+
+### 🗄️ 数据库管理（类 Navicat 体验）
+- **可视化表设计器**：增删改列、修改类型/默认值，自动生成 ALTER TABLE
+- **内联数据编辑**：双击单元格直接修改，批量保存/撤销
+- **行级操作**：新增行、删除行、外键跳转
+- **排序筛选**：表头点击排序、右键快速筛选
+- **导入导出**：CSV / Excel / JSON 导入导出
+
+### 🔴 Redis 管理
+- **键树浏览**：层级化 Key 展示 + 类型着色
+- **值查看编辑**：支持所有数据类型
+- **AI 命令生成**：自然语言 → Redis 命令
+
+### 🎨 专业界面
+- **PyCharm Darcula 暗色主题**
+- **三栏布局**：数据库树 | 数据浏览 | AI 助手
+- **可拖拽分割线 + 圆角无边框窗口**
+
+---
+
+## 📸 运行截图
+
+### SQL 执行效果
+![SQL执行](运行结果/sql执行效果1.png)
+
+### 查询结果 + AI 分析
+![查询结果](运行结果/sql执行结果2.png)
+
+### Redis 模块
+![Redis](运行结果/Redis模块.png)
+
+---
 
 ## 🚀 快速开始
 
-### Docker 部署（推荐）
+### 环境要求
+- Python >= 3.9
+- MySQL 8.0+ / Redis（可选）
+- DeepSeek API Key（或其他 OpenAI 兼容接口）
+
+### 安装
 
 ```bash
-# 1. 克隆仓库
 git clone https://gitee.com/huang-baiyuan123/sqlagent.git
 cd sqlagent
-
-# 2. 配置环境变量
-cp .env.example .env
-# 编辑 .env，填入你的 OPENAI_API_KEY
-
-# 3. 启动服务
-docker compose up -d
-
-# 4. 验证
-curl http://localhost:8000/api/health
-# {"status":"healthy","database":true,"llm":true,"version":"0.2.0"}
+pip install -e ".[desktop]"
 ```
 
-### 本地开发
+### 配置
 
 ```bash
-# 安装依赖
-pip install -e ".[dev]"
+cp .env.example .env
+# 编辑 .env 填入 API Key 和数据库连接信息
+```
 
-# 启动 MySQL（Docker）
-docker compose up -d mysql
+或启动后在菜单栏 **设置 → AI 配置** 弹窗中直接修改。
 
-# 修改 .env 中 MYSQL_HOST=localhost
+### 启动
 
-# 启动 API 服务
+**后端 API**：
+```bash
 uvicorn sqlagent.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-## 📖 API 文档
-
-启动后访问 http://localhost:8000/docs 查看完整 Swagger 文档。
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| `GET` | `/api/health` | 健康检查 |
-| `POST` | `/api/query` | 自然语言查询 |
-| `POST` | `/api/execute` | 直接执行 SQL |
-| `GET` | `/api/schema` | 获取所有表结构 |
-| `GET` | `/api/schema/{table}` | 获取指定表结构 |
-| `GET` | `/api/history` | 查询对话历史 |
-
-### 示例
-
+**桌面端**：
 ```bash
-# 自然语言查询
-curl -X POST http://localhost:8000/api/query \
-  -H "Content-Type: application/json" \
-  -d '{"question": "显示所有表"}'
-
-# 直接执行 SQL
-curl -X POST http://localhost:8000/api/execute \
-  -H "Content-Type: application/json" \
-  -d '{"sql": "SELECT * FROM users LIMIT 5"}'
-
-# 查看数据库结构
-curl http://localhost:8000/api/schema
+python src/sqlagent/desktop_app.py
 ```
+
+启动后访问 `http://localhost:8000/docs` 查看 API 文档。
+
+---
 
 ## 🏗️ 项目结构
 
 ```
 sqlagent/
-├── src/sqlagent/          # 核心代码
-│   ├── main.py            # FastAPI 应用入口
-│   ├── models.py          # Pydantic 请求/响应模型
-│   ├── config.py          # MySQL + LLM 配置管理
-│   ├── database.py        # 数据库管理器 (Schema获取/SQL执行)
-│   ├── agent.py           # LangChain Agent 核心
-│   ├── tools.py           # Agent 工具 (list_tables/execute_query/...)
-│   ├── prompts.py         # 系统提示词
-│   └── routers/           # API 路由
-│       ├── health.py      # /api/health
-│       ├── query.py       # /api/query + /api/execute
-│       └── schema.py      # /api/schema
-├── sql/init.sql           # MySQL 初始化脚本
-├── tests/                 # 测试
-├── Dockerfile
-├── docker-compose.yml     # API + MySQL 双容器编排
-├── pyproject.toml
-└── .env.example
+├── src/sqlagent/
+│   ├── desktop_app.py       # PySide6 桌面端 (约 2300 行)
+│   ├── main.py              # FastAPI 应用入口
+│   ├── agent.py             # LangChain AI Agent 核心
+│   ├── database.py          # MySQL 数据库管理器
+│   ├── tools.py             # Agent 工具集
+│   ├── config.py            # 配置管理
+│   ├── prompts.py           # AI 提示词模板
+│   ├── models.py            # Pydantic 数据模型
+│   ├── routers/
+│   │   ├── query.py         # /api/query, /api/execute
+│   │   ├── schema.py        # /api/schema, /api/databases
+│   │   ├── table.py         # /api/table (增删改查)
+│   │   ├── redis_routes.py  # /api/redis (键值操作+AI)
+│   │   └── health.py        # /health
+│   └── static/              # 图标资源
+├── tests/                   # 测试
+├── .env.example             # 环境变量模板
+└── docker-compose.yml       # Docker 部署
 ```
 
-## 🔧 配置
+---
 
-| 环境变量 | 默认值 | 说明 |
-|---------|-------|------|
-| `OPENAI_API_KEY` | — | **必填** OpenAI API Key |
-| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | API 地址 |
-| `OPENAI_MODEL` | `gpt-4o` | 模型名称 |
-| `MYSQL_HOST` | `mysql` (Docker) / `localhost` (本地) | MySQL 主机 |
-| `MYSQL_PORT` | `3306` | MySQL 端口 |
-| `MYSQL_USER` | `root` | 数据库用户 |
-| `MYSQL_PASSWORD` | `root123` | 数据库密码 |
-| `MYSQL_DATABASE` | `sqlagent` | 数据库名 |
-| `LOG_LEVEL` | `INFO` | 日志级别 |
-| `READ_ONLY` | `true` | 只读模式 |
+## 🔧 技术栈
 
-## 📄 许可证
+| 层 | 技术 |
+|---|---|
+| 桌面 GUI | PySide6 (Qt for Python) |
+| 后端 API | FastAPI + Uvicorn |
+| AI Agent | LangChain + DeepSeek / OpenAI |
+| 数据库 | SQLAlchemy + PyMySQL |
+| Redis | redis-py |
+| 语法高亮 | QSyntaxHighlighter |
+| Excel | openpyxl |
 
-MIT License
+---
+
+## 📡 API 端点
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/health` | 健康检查 |
+| `POST` | `/api/query` | AI 自然语言 → SQL |
+| `POST` | `/api/execute` | 执行 SQL |
+| `GET` | `/api/databases` | 列出所有数据库 |
+| `GET` | `/api/schema` | 获取表结构 |
+| `POST` | `/api/table/update` | 更新行 |
+| `POST` | `/api/table/insert` | 插入行 |
+| `POST` | `/api/table/delete` | 删除行 |
+| `GET` | `/api/table/ddl` | 查看建表 DDL |
+| `GET` | `/api/redis/keys` | Redis 键列表 |
+| `GET` | `/api/redis/key/{key}` | Redis 键值 |
+| `POST` | `/api/redis/query` | Redis AI 命令生成 |
+| `POST` | `/api/redis/execute` | 执行 Redis 命令 |
+
+---
+
+## 📄 License
+
+MIT
