@@ -1411,8 +1411,7 @@ class MainWindow(QMainWindow):
                 'page': 0, 'sql': sql, 'is_temp': is_temp,
                 'db_name': db_name, 'table_name': title.replace('📋 ', '').replace('🔍 ', ''),
                 'pk_col': pk_col, 'fk_map': {}}
-        widget_id = id(table)
-        self._tab_data[widget_id] = info
+        self._tab_data[idx] = info
         if rows_data:
             self._render_tab_page(idx)
         self._update_edit_buttons()
@@ -1422,11 +1421,12 @@ class MainWindow(QMainWindow):
         """关闭Tab"""
         if self.data_tabs.count() <= 1:
             return
-        # 用 widget 指针重建映射（比索引更可靠）
-        old_widget = self.data_tabs.widget(idx)
         self.data_tabs.removeTab(idx)
-        if old_widget:
-            self._tab_data.pop(id(old_widget), None)
+        # 重建索引
+        self._tab_data = {
+            i: self._tab_data.get(k)
+            for i, k in enumerate(k for k in self._tab_data if k != idx)
+        }
 
     def _current_table(self) -> QTableWidget:
         """获取当前Tab的表格"""
@@ -1434,9 +1434,7 @@ class MainWindow(QMainWindow):
         return w if isinstance(w, QTableWidget) else None
 
     def _current_tab_info(self) -> Dict:
-        """获取当前Tab信息"""
-        w = self.data_tabs.currentWidget()
-        return self._tab_data.get(id(w) if w else 0,
+        return self._tab_data.get(self.data_tabs.currentIndex(),
                                   {'rows': [], 'page': 0, 'columns': [], 'title': '', 'sql': '', 'is_temp': False})
 
     # ── 单元格编辑 ─────────────────────────
@@ -1791,8 +1789,7 @@ class MainWindow(QMainWindow):
             self._load_table_data(db_name, table_name)
 
     def _on_tab_changed(self, idx: int):
-        w = self.data_tabs.widget(idx)
-        info = self._tab_data.get(id(w)) if w else None
+        info = self._tab_data.get(idx)
         if info and info.get('rows'):
             self.page_label.setText(
                 f'第 {info["page"]+1}/{max(1, (len(info["rows"])+99)//100)} 页 · 共 {len(info["rows"])} 行')
@@ -2135,8 +2132,7 @@ class MainWindow(QMainWindow):
         """渲染指定Tab的当前页"""
         if tab_idx < 0:
             tab_idx = self.data_tabs.currentIndex()
-        w = self.data_tabs.widget(tab_idx)
-        info = self._tab_data.get(id(w)) if w else None
+        info = self._tab_data.get(tab_idx)
         if not info or info.get('is_temp'):
             return
         tbl = self._current_table()
