@@ -170,7 +170,11 @@ def _extract_redis_commands(text: str) -> list:
     idx = text.find(marker)
     if idx >= 0:
         text = text[idx + len(marker):]
-    # 按行取有效命令; 如果同一行有多个命令则拆分
+    # 关键: 在每个命令关键词前插入换行 (HGETALL, GET, SET, DEL...)
+    for kw in ['HGETALL','HGET','HSET','HDEL','GET','SET','DEL','LRANGE','LPUSH','RPUSH',
+               'SADD','SMEMBERS','ZADD','ZRANGE','TYPE','INCR','DECR','EXPIRE','TTL']:
+        text = re.sub(rf'({kw}\s)', r'\n\1', text)
+    # 按行取有效命令
     VALID_SET = {'GET','SET','DEL','EXISTS','EXPIRE','TTL','TYPE','HGET','HSET','HGETALL','HDEL',
                  'LPUSH','RPUSH','LRANGE','SADD','SMEMBERS','ZADD','ZRANGE','INCR','DECR'}
     cmds = []
