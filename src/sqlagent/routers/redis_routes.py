@@ -197,8 +197,8 @@ async def redis_query(req: RedisQueryRequest):
         human_msg = (
             f"【Redis 真实数据】{data_context}\n\n"
             f"【用户需求】{req.question}\n\n"
-            f"【铁律】真实数据已标注类型！hash→HGETALL, string→GET, list→LRANGE。"
-            f"直接生成命令, 不要TYPE, 不要选错命令！每行一条命令。"
+            f"【铁律】先分析, 然后在 $correct-command$ 后面输出纯命令(每行一条)。\n"
+            f"hash→HGETALL, string→GET, list→LRANGE, set→SMEMBERS。"
         )
 
         from langchain_openai import ChatOpenAI

@@ -165,26 +165,19 @@ def _extract_redis_commands(text: str) -> list:
     VALID = r'(GET|SET|DEL|EXISTS|EXPIRE|TTL|TYPE|HGET|HSET|HGETALL|HDEL|' \
             r'LPUSH|RPUSH|LRANGE|SADD|SMEMBERS|ZADD|ZRANGE|INCR|DECR|KEYS|' \
             r'SCAN|RENAME|APPEND|STRLEN|LREM|ZREM|SREM|INCRBY|DECRBY)'
-    # 匹配: 命令名 + 空格 + 参数 (如 GET user:1, TYPE user:1, SET k v)
-    # 1. 找到所有命令关键词的位置
-    cmd_pattern = re.compile(rf'(?<![a-zA-Z])({VALID})\b', re.IGNORECASE)
-    positions = [(m.start(), m.group(1).upper()) for m in cmd_pattern.finditer(text)]
-    if not positions:
-        return []
-
-    # 2. 提取每个命令及其参数(到下一个命令之间)
+    # 从 $correct-command$ 标记后提取纯命令
+    marker = '$correct-command$'
+    idx = text.find(marker)
+    if idx >= 0:
+        text = text[idx + len(marker):]
+    # 按行取有效命令
+    VALID_SET = {'GET','SET','DEL','EXISTS','EXPIRE','TTL','TYPE','HGET','HSET','HGETALL','HDEL',
+                 'LPUSH','RPUSH','LRANGE','SADD','SMEMBERS','ZADD','ZRANGE','INCR','DECR'}
     cmds = []
-    for i, (pos, cmd) in enumerate(positions):
-        end = positions[i+1][0] if i+1 < len(positions) else len(text)
-        args_text = text[pos + len(cmd):end].strip()
-        # 取第一个空格分隔的参数(大多数Redis命令只有1-2个参数)
-        args = args_text.split()
-        # 过滤: 参数必须看起来像Redis参数(不含中文/命令关键词)
-        valid_args = [a for a in args if not re.search(r'[一-鿿]', a) and a.upper() not in VALID_CMDS]
-        if not valid_args:
-            continue  # 跳过"执行HSET命令"这种假命令
-        full_cmd = ' '.join([cmd] + valid_args)
-        cmds.append(full_cmd)
+    for line in text.strip().split('\n'):
+        parts = line.strip().split()
+        if parts and parts[0].upper() in VALID_SET:
+            cmds.append(line.strip())
     return cmds
 
 
