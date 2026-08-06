@@ -183,9 +183,14 @@ async def redis_query(req: RedisQueryRequest):
 
         prompt = ChatPromptTemplate.from_messages([(
             "system",
-            "你是 Redis 专家。根据【真实数据】生成 Redis 命令，每条一行。"
-            "Hash→HSET/HGET, String→SET/GET。改类型→DEL旧键→用真实数据HSET。"
-            "禁止编造数据！必须使用【真实数据】中的值！"
+            "你是 Redis 专家。根据【真实数据】生成 Redis 命令。\n"
+            "规则：\n"
+            "1. 每条命令一行，纯文本，不要用代码块包裹\n"
+            "2. 不要加 ``` 或任何 markdown 标记\n"
+            "3. Hash→HSET/HGET, String→SET/GET, 删除→DEL\n"
+            "4. 改类型：DEL旧键→用真实数据HSET\n"
+            "5. 禁止编造数据！必须使用【真实数据】中的值！\n"
+            "示例输出：\nDEL user:1\nSET counter 100"
         ), ("human", "{question}")])
 
         chain = prompt | llm
@@ -200,13 +205,18 @@ async def redis_execute(req: RedisExecuteRequest):
     """执行 Redis 命令（带类型检查）"""
     try:
         r = get_redis()
+        # 清理 markdown 代码块标记
+        import re as _re
+        cmd_text = _re.sub(r'```\w*\n?', '', req.command)
+        cmd_text = _re.sub(r'```', '', cmd_text)
+
         results = []
         type_sensitive = {'HGET': 'hash', 'HSET': 'hash', 'HGETALL': 'hash', 'HDEL': 'hash',
                           'LPUSH': 'list', 'RPUSH': 'list', 'LRANGE': 'list',
                           'SADD': 'set', 'SMEMBERS': 'set',
                           'ZADD': 'zset', 'ZRANGE': 'zset'}
 
-        for line in req.command.strip().split('\n'):
+        for line in cmd_text.strip().split('\n'):
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
