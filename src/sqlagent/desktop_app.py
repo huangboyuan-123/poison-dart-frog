@@ -1320,7 +1320,7 @@ class MainWindow(QMainWindow):
                         # 叶子节点
                         item = QTreeWidgetItem([part])
                         item.setData(0, Qt.UserRole + 1, 'key')
-                        item.setData(0, Qt.UserRole + 2, str(key))
+                        item.setToolTip(0, str(key))  # 用ToolTip存key名, 更可靠
                         type_color = data.get('types', {}).get(key, '')
                         if type_color:
                             item.setForeground(0, QColor(type_color))
@@ -1348,7 +1348,7 @@ class MainWindow(QMainWindow):
         item = self.redis_tree.itemAt(pos)
         if not item or item.data(0, Qt.UserRole + 1) != 'key':
             return
-        key = str(item.data(0, Qt.UserRole + 2) or '')
+        key = item.toolTip(0)
         menu = QMenu(self)
         act_del = QAction('🗑 删除键', self)
         act_del.triggered.connect(lambda _k=key: self._delete_redis_key_by_name(_k))
@@ -1375,7 +1375,7 @@ class MainWindow(QMainWindow):
     def _on_redis_key_click(self, item: QTreeWidgetItem, _col: int):
         if item.data(0, Qt.UserRole + 1) != 'key':
             return
-        key = item.data(0, Qt.UserRole + 2)
+        key = item.toolTip(0)
         self.redis_key_label.setText(f'键: {key}')
         self.redis_value_text.setReadOnly(True)
         self.redis_save_btn.setEnabled(False)
