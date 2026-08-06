@@ -1257,6 +1257,8 @@ class MainWindow(QMainWindow):
         self.redis_tree.setHeaderHidden(True)
         self.redis_tree.setIndentation(12)
         self.redis_tree.itemClicked.connect(self._on_redis_key_click)
+        self.redis_tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.redis_tree.customContextMenuRequested.connect(self._on_redis_tree_menu)
         layout.addWidget(self.redis_tree, 1)
 
     def _build_redis_panel_b(self, parent: QWidget):
@@ -1335,6 +1337,35 @@ class MainWindow(QMainWindow):
                         parent = tree_map[full_path]
 
         self._run_async(do_fetch, callback)
+
+    def _on_redis_tree_menu(self, pos):
+        """Redis 树右键菜单"""
+        item = self.redis_tree.itemAt(pos)
+        if not item or item.data(0, Qt.UserRole + 1) != 'key':
+            return
+        key = item.data(0, Qt.UserRole + 2)
+        menu = QMenu(self)
+        act_del = QAction('🗑 删除键', self)
+        act_del.triggered.connect(lambda _k=key: self._delete_redis_key_by_name(_k))
+        menu.addAction(act_del)
+        act_copy = QAction('复制键名', self)
+        act_copy.triggered.connect(lambda _k=key: QApplication.clipboard().setText(_k))
+        menu.addAction(act_copy)
+        menu.exec(self.redis_tree.mapToGlobal(pos))
+
+    def _delete_redis_key_by_name(self, key: str):
+        """通过键名删除 Redis 键"""
+        reply = QMessageBox.warning(self, '⚠️ 确认删除',
+                                     f'确定删除键 {key} 吗？', QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            try:
+                r = requests.delete(f'{API_BASE}/api/redis/key/{key}', timeout=5).json()
+                if r.get('ok'):
+                    self.redis_value_text.clear()
+                    self._load_redis_keys()
+                    self._show_log(f'✓ 已删除键: {key}')
+            except Exception as e:
+                self._show_log(f'✗ 删除失败: {e}')
 
     def _on_redis_key_click(self, item: QTreeWidgetItem, _col: int):
         if item.data(0, Qt.UserRole + 1) != 'key':
