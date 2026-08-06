@@ -1469,6 +1469,25 @@ class MainWindow(QMainWindow):
 
         self._run_async(do_fetch, callback)
 
+    def _execute_redis_cmd(self, cmd: str):
+        """在 Redis 工作区执行命令"""
+        self.exec_btn.setText('执行中...')
+        self.exec_btn.setEnabled(False)
+        try:
+            r = requests.post(f'{API_BASE}/api/redis/execute',
+                              json={'command': cmd}, timeout=10).json()
+            if r.get('ok'):
+                self._show_log(f'✓ {r.get("result", "OK")}')
+                self._show_redis_result(r.get('result', ''), cmd)
+                self._load_redis_keys()
+            else:
+                self._show_log(f'✗ {r.get("error")}')
+        except Exception as e:
+            self._show_log(f'✗ {e}')
+        finally:
+            self.exec_btn.setText('执行 SQL')
+            self.exec_btn.setEnabled(True)
+
     def _redis_execute(self):
         cmd_text = self.redis_cmd_text.toPlainText().strip()
         if not cmd_text or cmd_text.startswith('#'):
@@ -2440,7 +2459,12 @@ class MainWindow(QMainWindow):
         if not sql or sql.startswith('--'):
             return
 
-        # 高危拦截
+        ws = getattr(self, '_current_workspace', 'mysql')
+        if ws == 'redis':
+            self._execute_redis_cmd(sql)
+            return
+
+        # 高危拦截 (MySQL only)
         upper = sql.upper()
         for kw in DANGER_KW:
             if kw.upper() in upper:
