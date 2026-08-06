@@ -2153,52 +2153,43 @@ class MainWindow(QMainWindow):
         node_type = item.data(0, Qt.UserRole + 1)
 
         if node_type == 'table':
-            table_name = item.text(0)
-            db_name = item.data(0, Qt.UserRole + 2)
+            table_name = str(item.text(0))
+            db_name = str(item.data(0, Qt.UserRole + 2) or '')
             columns = item.data(0, Qt.UserRole) or []
 
             menu = QMenu(self)
-            act_struct = QAction('查看表结构', self)
-            act_struct.triggered.connect(lambda t=table_name, c=columns: self._show_table_structure(t, c))
-            menu.addAction(act_struct)
-
-            act_select = QAction(f'SELECT * FROM {table_name}', self)
-            act_select.triggered.connect(lambda t=table_name: self.sql_text.setPlainText(
-                f'SELECT * FROM {t} LIMIT 100;'))
-            menu.addAction(act_select)
-
-            act_design = QAction('📐 设计表 (可视化)', self)
-            act_design.triggered.connect(lambda t=table_name, d=db_name, c=columns:
-                                         self._open_table_designer(d, t, c))
-            menu.addAction(act_design)
-            act_ddl = QAction('📄 查看DDL', self)
-            act_ddl.triggered.connect(lambda t=table_name, d=db_name: self._show_table_ddl(d, t))
-            menu.addAction(act_ddl)
-
+            a1 = QAction('查看表结构', self)
+            a1.triggered.connect(lambda _t=table_name, _c=columns: self._show_table_structure(_t, _c))
+            menu.addAction(a1)
+            a2 = QAction(f'SELECT * FROM {table_name}', self)
+            a2.triggered.connect(lambda _t=table_name: self.sql_text.setPlainText(f'SELECT * FROM {_t} LIMIT 100;'))
+            menu.addAction(a2)
+            a3 = QAction('📐 设计表 (可视化)', self)
+            a3.triggered.connect(lambda _d=db_name, _t=table_name, _c=columns: self._open_table_designer(_d, _t, _c))
+            menu.addAction(a3)
+            a4 = QAction('📄 查看DDL', self)
+            a4.triggered.connect(lambda _d=db_name, _t=table_name: self._show_table_ddl(_d, _t))
+            menu.addAction(a4)
             menu.addSeparator()
-            act_drop = QAction('🗑 删除表', self)
-            act_drop.triggered.connect(lambda t=table_name, d=db_name: self._drop_table(d, t))
-            menu.addAction(act_drop)
-
-            act_copy = QAction('复制表名', self)
-            act_copy.triggered.connect(lambda t=table_name: QApplication.clipboard().setText(t))
-            menu.addAction(act_copy)
-
+            a5 = QAction('🗑 删除表', self)
+            a5.triggered.connect(lambda _d=db_name, _t=table_name: self._drop_table(_d, _t))
+            menu.addAction(a5)
+            a6 = QAction('复制表名', self)
+            a6.triggered.connect(lambda _t=table_name: QApplication.clipboard().setText(_t))
+            menu.addAction(a6)
             menu.exec(self.schema_tree.mapToGlobal(pos))
 
         elif node_type == 'database':
-            db_name = item.data(0, Qt.UserRole + 2)
+            db_name = str(item.data(0, Qt.UserRole + 2) or '')
             menu = QMenu(self)
-            act_refresh = QAction('刷新', self)
-            act_refresh.triggered.connect(self._load_schema_tree)
-            menu.addAction(act_refresh)
+            a1 = QAction('刷新', self); a1.triggered.connect(self._load_schema_tree); menu.addAction(a1)
             menu.addSeparator()
-            act_drop_db = QAction('🗑 删除数据库', self)
-            act_drop_db.triggered.connect(lambda d=db_name: self._drop_database(d))
-            menu.addAction(act_drop_db)
-            act_use = QAction(f'复制库名', self)
-            act_use.triggered.connect(lambda d=db_name: QApplication.clipboard().setText(d))
-            menu.addAction(act_use)
+            a2 = QAction('🗑 删除数据库', self)
+            a2.triggered.connect(lambda _d=db_name: self._drop_database(_d))
+            menu.addAction(a2)
+            a3 = QAction('复制库名', self)
+            a3.triggered.connect(lambda _d=db_name: QApplication.clipboard().setText(_d))
+            menu.addAction(a3)
             menu.exec(self.schema_tree.mapToGlobal(pos))
 
     def _open_table_designer(self, db: str, table: str, columns: list):
