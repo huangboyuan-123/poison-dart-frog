@@ -166,7 +166,7 @@ def _extract_redis_commands(text: str) -> list:
             r'LPUSH|RPUSH|LRANGE|SADD|SMEMBERS|ZADD|ZRANGE|INCR|DECR|KEYS|' \
             r'SCAN|RENAME|APPEND|STRLEN|LREM|ZREM|SREM|INCRBY|DECRBY)'
     # 匹配: 命令名 + 空格 + 参数 (如 GET user:1, TYPE user:1, SET k v)
-    pattern = re.compile(rf'\b({VALID})\s+\S+', re.IGNORECASE)
+    pattern = re.compile(rf'(?<![a-zA-Z])({VALID})\s+\S+', re.IGNORECASE)
     seen = set()
     cmds = []
     for m in pattern.finditer(text):
