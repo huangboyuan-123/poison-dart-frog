@@ -166,14 +166,21 @@ def _extract_redis_commands(text: str) -> list:
             r'LPUSH|RPUSH|LRANGE|SADD|SMEMBERS|ZADD|ZRANGE|INCR|DECR|KEYS|' \
             r'SCAN|RENAME|APPEND|STRLEN|LREM|ZREM|SREM|INCRBY|DECRBY)'
     # 匹配: 命令名 + 空格 + 参数 (如 GET user:1, TYPE user:1, SET k v)
-    pattern = re.compile(rf'(?<![a-zA-Z])({VALID})\s+\S+', re.IGNORECASE)
-    seen = set()
+    # 1. 找到所有命令关键词的位置
+    cmd_pattern = re.compile(rf'(?<![a-zA-Z])({VALID})\b', re.IGNORECASE)
+    positions = [(m.start(), m.group(1).upper()) for m in cmd_pattern.finditer(text)]
+    if not positions:
+        return []
+
+    # 2. 提取每个命令及其参数(到下一个命令之间)
     cmds = []
-    for m in pattern.finditer(text):
-        cmd = m.group(0).strip()
-        if cmd not in seen:
-            seen.add(cmd)
-            cmds.append(cmd)
+    for i, (pos, cmd) in enumerate(positions):
+        end = positions[i+1][0] if i+1 < len(positions) else len(text)
+        args_text = text[pos + len(cmd):end].strip()
+        # 取第一个空格分隔的参数(大多数Redis命令只有1-2个参数)
+        args = args_text.split()[:2]
+        full_cmd = ' '.join([cmd] + args)
+        cmds.append(full_cmd)
     return cmds
 
 
