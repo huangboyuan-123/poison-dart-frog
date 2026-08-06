@@ -161,40 +161,13 @@ def _md_to_html(text: str) -> str:
 
 
 def _extract_redis_commands(text: str) -> list:
-    """从AI分析文本中提取纯Redis命令（不限行首）"""
-    VALID = r'(GET|SET|DEL|EXISTS|EXPIRE|TTL|TYPE|HGET|HSET|HGETALL|HDEL|' \
-            r'LPUSH|RPUSH|LRANGE|SADD|SMEMBERS|ZADD|ZRANGE|INCR|DECR|KEYS|' \
-            r'SCAN|RENAME|APPEND|STRLEN|LREM|ZREM|SREM|INCRBY|DECRBY)'
-    # 从 $correct-command$ 标记后提取纯命令
+    """截取 correct-command 标识符后面的所有内容"""
     marker = '$correct-command$'
     idx = text.find(marker)
-    if idx >= 0:
-        text = text[idx + len(marker):]
-    # 关键: 在每个命令关键词前插入换行 (长关键词优先避免部分匹配)
-    for kw in ['HGETALL','HSET','HGET','HDEL','LRANGE','LPUSH','RPUSH','SMEMBERS',
-               'ZRANGE','ZADD','SADD','GET','SET','DEL','TYPE','INCR','DECR','EXPIRE','TTL']:
-        text = re.sub(rf'({kw})\b', r'\n\1', text, flags=re.IGNORECASE)
-    # 按行取有效命令
-    VALID_SET = {'GET','SET','DEL','EXISTS','EXPIRE','TTL','TYPE','HGET','HSET','HGETALL','HDEL',
-                 'LPUSH','RPUSH','LRANGE','SADD','SMEMBERS','ZADD','ZRANGE','INCR','DECR'}
-    cmds = []
-    for line in text.strip().split('\n'):
-        line = line.strip()
-        # 同一行多个命令: "HGETALL user:1HGETALL user:2" → 拆分
-        parts = line.split()
-        i = 0
-        while i < len(parts):
-            if parts[i].upper() in VALID_SET:
-                cmd_parts = [parts[i]]
-                i += 1
-                while i < len(parts) and parts[i].upper() not in VALID_SET:
-                    cmd_parts.append(parts[i])
-                    i += 1
-                cmds.append(' '.join(cmd_parts))
-            else:
-                i += 1
-    return cmds
-
+    if idx < 0:
+        return []
+    after = text[idx + len(marker):].strip()
+    return [line.strip() for line in after.split(chr(10)) if line.strip()]
 
 def _extract_sql_from_stream(text: str) -> str:
     """从流式文本中提取 SQL 语句并修复格式"""
