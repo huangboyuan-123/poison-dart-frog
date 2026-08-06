@@ -178,7 +178,7 @@ def _extract_redis_commands(text: str) -> list:
         end = positions[i+1][0] if i+1 < len(positions) else len(text)
         args_text = text[pos + len(cmd):end].strip()
         # 取第一个空格分隔的参数(大多数Redis命令只有1-2个参数)
-        args = args_text.split()[:2]
+        args = args_text.split()  # 取所有参数
         full_cmd = ' '.join([cmd] + args)
         cmds.append(full_cmd)
     return cmds
