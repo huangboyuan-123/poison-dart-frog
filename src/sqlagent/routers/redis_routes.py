@@ -223,7 +223,7 @@ async def redis_query(req: RedisQueryRequest):
             "- string类型 → GET key\n"
             "- list类型 → LRANGE key 0 -1\n"
             "- 删除 → DEL key\n"
-            "- 禁止编造！禁止TYPE！</parameter>
+            "- 禁止编造！禁止TYPE！"
 
         ), ("human", "{question}")])
 
