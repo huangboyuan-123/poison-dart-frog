@@ -224,7 +224,11 @@ async def redis_execute(req: RedisExecuteRequest):
 
             try:
                 result = r.execute_command(cmd, *args)
-                results.append(f'{cmd}: {result}')
+                # 友好提示
+                if cmd == 'DEL':
+                    results.append(f'{cmd}: 已删除 {result} 个键' if result else f'{cmd}: 键不存在')
+                else:
+                    results.append(f'{cmd}: {result}')
             except Exception as e:
                 results.append(f'{cmd}: ERROR - {e}')
         return {"ok": True, "result": '\n'.join(results)}
