@@ -139,10 +139,25 @@ async def redis_query(req: RedisQueryRequest):
         if not api_key:
             return {"error": "未配置 LLM API Key", "command": "", "answer": ""}
 
-        # 提取问题中提到的 key，查询真实数据
+        # 提取问题中的关键词 + 扫描全量键结构
         import re as _re
         r = get_redis()
         data_context = ""
+
+        # 1. 扫描现有键总览 (最多50个)
+        try:
+            cursor, all_keys = 0, []
+            while True:
+                cursor, batch = r.scan(cursor, count=50)
+                all_keys.extend(batch)
+                if cursor == 0 or len(all_keys) >= 100:
+                    break
+            if all_keys:
+                data_context += f"现有 {len(all_keys)} 个键: {', '.join(sorted(all_keys)[:30])}"
+        except Exception:
+            pass
+
+        # 2. 查找问题中提到的具体键
         key_pattern = _re.compile(r'\b([a-zA-Z_][a-zA-Z0-9_:]*)\b')
         seen = set()
         for m in key_pattern.finditer(req.question):
@@ -158,18 +173,32 @@ async def redis_query(req: RedisQueryRequest):
                     data_context += f"\n  {k} (hash) = {r.hgetall(k)}"
                 elif t == 'list':
                     data_context += f"\n  {k} (list) = {r.lrange(k, 0, -1)}"
+                elif t == 'set':
+                    data_context += f"\n  {k} (set) = {list(r.smembers(k))}"
             except Exception:
                 pass
 
-        # 构建强约束提示
-        if data_context:
-            human_msg = (
-                f"【真实数据 - 必须使用】{data_context}\n\n"
-                f"【用户需求】{req.question}\n\n"
-                f"请根据上面的真实数据生成 Redis 命令，禁止编造！"
-            )
-        else:
-            human_msg = req.question
+        # 3. 模糊匹配: 在键名中搜索问题关键词
+        for word in _re.findall(r'[\w]+', req.question):
+            if len(word) >= 2 and word.lower() not in ('的', '给', '把', '在', '和', '是', '请', '帮', '我', '查', '看', '删', '修改', '添加', '创建', 'the', 'a', 'an'):
+                try:
+                    matched = [k for k in all_keys if word.lower() in k.lower()]
+                    for k in matched[:5]:
+                        if k not in seen:
+                            seen.add(k)
+                            t = r.type(k)
+                            if t == 'string':
+                                data_context += f"\n  {k} (string) = {r.get(k)}"
+                            elif t == 'hash':
+                                data_context += f"\n  {k} (hash) = {r.hgetall(k)}"
+                except Exception:
+                    pass
+
+        human_msg = (
+            f"【Redis 真实数据】{data_context}\n\n"
+            f"【用户需求】{req.question}\n\n"
+            f"请先分析现有数据结构，再生成正确的 Redis 命令。禁止编造！"
+        )
 
         from langchain_openai import ChatOpenAI
         from langchain.prompts import ChatPromptTemplate
@@ -183,14 +212,16 @@ async def redis_query(req: RedisQueryRequest):
 
         prompt = ChatPromptTemplate.from_messages([(
             "system",
-            "你是 Redis 专家。根据【真实数据】生成 Redis 命令。\n"
+            "你是 Redis 专家。请根据【真实数据】分析并生成 Redis 命令。\n\n"
+            "输出格式（直接输出，不要代码块）：\n"
+            "第1行: 对用户问题的理解\n"
+            "第2行: 需要执行的操作\n"
+            "然后每行一条 Redis 命令\n\n"
             "规则：\n"
-            "1. 每条命令一行，纯文本，不要用代码块包裹\n"
-            "2. 不要加 ``` 或任何 markdown 标记\n"
-            "3. Hash→HSET/HGET, String→SET/GET, 删除→DEL\n"
-            "4. 改类型：DEL旧键→用真实数据HSET\n"
-            "5. 禁止编造数据！必须使用【真实数据】中的值！\n"
-            "示例输出：\nDEL user:1\nSET counter 100"
+            "- Hash→HSET/HGET, String→SET/GET, 删除→DEL\n"
+            "- 改类型：DEL旧键→用真实数据HSET\n"
+            "- 禁止编造数据！必须使用【真实数据】中的值！\n"
+            "- 不要用 ``` 包裹，直接输出"
         ), ("human", "{question}")])
 
         chain = prompt | llm
