@@ -1311,30 +1311,35 @@ class MainWindow(QMainWindow):
 
         def callback(data):
             keys = data.get('keys', [])
-            # 构建层级树
             tree_map: Dict[str, QTreeWidgetItem] = {}
             for key in sorted(keys):
                 parts = key.split(':')
-                parent = self.redis_tree
                 for i, part in enumerate(parts):
                     full_path = ':'.join(parts[:i+1])
                     if i == len(parts) - 1:
+                        # 叶子节点
                         item = QTreeWidgetItem([part])
                         item.setData(0, Qt.UserRole + 1, 'key')
-                        item.setData(0, Qt.UserRole + 2, key)
+                        item.setData(0, Qt.UserRole + 2, str(key))
                         type_color = data.get('types', {}).get(key, '')
                         if type_color:
                             item.setForeground(0, QColor(type_color))
-                        if full_path in tree_map:
-                            tree_map[full_path].parent().addChild(item)
+                        # 添加到父节点
+                        parent_path = ':'.join(parts[:i]) if i > 0 else ''
+                        if parent_path and parent_path in tree_map:
+                            tree_map[parent_path].addChild(item)
                         else:
                             self.redis_tree.addTopLevelItem(item)
                     else:
+                        # 中间节点
                         if full_path not in tree_map:
                             item = QTreeWidgetItem([part])
-                            self.redis_tree.addTopLevelItem(item)
+                            parent_path = ':'.join(parts[:i]) if i > 0 else ''
+                            if parent_path and parent_path in tree_map:
+                                tree_map[parent_path].addChild(item)
+                            else:
+                                self.redis_tree.addTopLevelItem(item)
                             tree_map[full_path] = item
-                        parent = tree_map[full_path]
 
         self._run_async(do_fetch, callback)
 
