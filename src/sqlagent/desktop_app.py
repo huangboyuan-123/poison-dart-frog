@@ -1360,9 +1360,19 @@ class MainWindow(QMainWindow):
         menu.exec(self.redis_tree.mapToGlobal(pos))
 
     def _delete_redis_key_by_name(self, key: str):
-        """通过键名删除 Redis 键"""
+        """通过键名删除 Redis 键（先确认存在）"""
+        # 先检查键是否存在
+        try:
+            check = requests.get(f'{API_BASE}/api/redis/key/{key}', timeout=3).json()
+            if 'detail' in check:
+                QMessageBox.warning(self, '提示', f'键 {key} 不存在')
+                return
+        except Exception:
+            pass
+
         reply = QMessageBox.warning(self, '⚠️ 确认删除',
-                                     f'确定删除键 {key} 吗？', QMessageBox.Yes | QMessageBox.No)
+                                     f'确定删除键 {key} 吗？\n类型: {check.get("type", "?")}\n值: {str(check.get("value",""))[:50]}',
+                                     QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.Yes:
             try:
                 r = requests.delete(f'{API_BASE}/api/redis/key/{key}', timeout=5).json()
@@ -1370,6 +1380,8 @@ class MainWindow(QMainWindow):
                     self.redis_value_text.clear()
                     self._load_redis_keys()
                     self._show_log(f'✓ 已删除键: {key}')
+                else:
+                    self._show_log(f'✗ 删除失败')
             except Exception as e:
                 self._show_log(f'✗ 删除失败: {e}')
 
