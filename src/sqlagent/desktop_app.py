@@ -161,15 +161,19 @@ def _md_to_html(text: str) -> str:
 
 
 def _extract_redis_commands(text: str) -> list:
-    """从AI分析文本中提取纯Redis命令"""
-    VALID = {'GET','SET','DEL','EXISTS','EXPIRE','TTL','TYPE','HGET','HSET','HGETALL','HDEL',
-             'LPUSH','RPUSH','LRANGE','SADD','SMEMBERS','ZADD','ZRANGE','INCR','DECR','KEYS',
-             'SCAN','RENAME','APPEND','STRLEN','LREM','ZREM','SREM','HSETNX','INCRBY','DECRBY'}
+    """从AI分析文本中提取纯Redis命令（不限行首）"""
+    VALID = r'(GET|SET|DEL|EXISTS|EXPIRE|TTL|TYPE|HGET|HSET|HGETALL|HDEL|' \
+            r'LPUSH|RPUSH|LRANGE|SADD|SMEMBERS|ZADD|ZRANGE|INCR|DECR|KEYS|' \
+            r'SCAN|RENAME|APPEND|STRLEN|LREM|ZREM|SREM|INCRBY|DECRBY)'
+    # 匹配: 命令名 + 空格 + 参数 (如 GET user:1, TYPE user:1, SET k v)
+    pattern = re.compile(rf'\b({VALID})\s+\S+', re.IGNORECASE)
+    seen = set()
     cmds = []
-    for line in text.strip().split('\n'):
-        parts = line.strip().split()
-        if parts and parts[0].upper() in VALID:
-            cmds.append(line.strip())
+    for m in pattern.finditer(text):
+        cmd = m.group(0).strip()
+        if cmd not in seen:
+            seen.add(cmd)
+            cmds.append(cmd)
     return cmds
 
 
