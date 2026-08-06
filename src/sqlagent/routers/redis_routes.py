@@ -110,6 +110,27 @@ class RedisExecuteRequest(BaseModel):
     command: str
 
 
+@router.post("/query/stream")
+async def redis_query_stream(req: RedisQueryRequest):
+    """Redis AI 流式 — SSE 推送思考过程"""
+    import asyncio
+    from fastapi.responses import StreamingResponse
+
+    async def event_stream():
+        # 调用非流式 query 获取结果
+        result = await redis_query(req)
+        text = result.get('command', result.get('answer', result.get('error', '')))
+        if not text:
+            yield f"data: [ERROR] 未生成命令\n\n"
+            return
+        for char in text:
+            yield f"data: {char}\n\n"
+            await asyncio.sleep(0.015)
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
 @router.post("/query")
 async def redis_query(req: RedisQueryRequest):
     """AI 自然语言 → Redis 命令（带当前数据上下文）"""

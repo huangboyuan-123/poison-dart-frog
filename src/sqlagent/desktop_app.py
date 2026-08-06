@@ -1220,6 +1220,7 @@ class MainWindow(QMainWindow):
 
     def _switch_workspace(self, mode: str):
         """切换工作区: home / mysql / redis"""
+        self._current_workspace = mode
         if mode == 'home':
             self.stack.setCurrentIndex(0)
         elif mode == 'mysql':
@@ -2383,9 +2384,16 @@ class MainWindow(QMainWindow):
         self.gen_btn.setEnabled(False)
         self._think_buffer = ''  # 清空思考缓存
 
-        prompt = question + '\n\n请详细分析并给出SQL语句。先查看表结构，再逐步生成正确的SQL。'
-        self._stream_worker = StreamWorker(f'{API_BASE}/api/query/stream',
-                                           {'question': prompt})
+        # 根据工作区选择端点
+        ws = getattr(self, '_current_workspace', 'mysql')
+        if ws == 'redis':
+            prompt = question
+            stream_url = f'{API_BASE}/api/redis/query/stream'
+        else:
+            prompt = question + '\n\n请详细分析并给出SQL语句。先查看表结构，再逐步生成正确的SQL。'
+            stream_url = f'{API_BASE}/api/query/stream'
+
+        self._stream_worker = StreamWorker(stream_url, {'question': prompt})
 
         # 实时更新思考面板 — 累积全文 Markdown 渲染
         full_buf = []
@@ -2401,7 +2409,7 @@ class MainWindow(QMainWindow):
 
         # 完成回调
         def on_finished(resp):
-            self.gen_btn.setText('生成 SQL')
+            self.gen_btn.setText('生成 SQL' if ws != 'redis' else '生成命令')
             self.gen_btn.setEnabled(True)
             full = resp.get('full_text', '')
             error = resp.get('error', '')
@@ -2411,13 +2419,17 @@ class MainWindow(QMainWindow):
                 self.sql_text.setPlainText(f'-- 生成失败: {error}')
                 return
 
-            sql = _extract_sql_from_stream(full)
-            if sql:
-                self.sql_text.setPlainText(sql)
-                self._append_log(f'[生成SQL] {question}\n{sql}\n')
+            if ws == 'redis':
+                self.sql_text.setPlainText(full)
+                self._append_log(f'[Redis] {question}\n{full[:300]}\n')
             else:
-                self.sql_text.setPlainText('-- AI 未生成 SQL，请查看思考过程')
-                self._append_log(f'[生成SQL] {question}\n{full[:300]}')
+                sql = _extract_sql_from_stream(full)
+                if sql:
+                    self.sql_text.setPlainText(sql)
+                    self._append_log(f'[生成SQL] {question}\n{sql}\n')
+                else:
+                    self.sql_text.setPlainText('-- AI 未生成 SQL，请查看思考过程')
+                    self._append_log(f'[生成SQL] {question}\n{full[:300]}')
 
         self._stream_worker.finished.connect(on_finished)
         self._stream_worker.start()
