@@ -242,7 +242,8 @@ async def redis_execute(req: RedisExecuteRequest):
         cmd_text = _re.sub(r'```', '', cmd_text)
 
         results = []
-        type_sensitive = {'HGET': 'hash', 'HSET': 'hash', 'HGETALL': 'hash', 'HDEL': 'hash',
+        type_sensitive = {'GET': 'string', 'SET': 'string', 'APPEND': 'string', 'STRLEN': 'string',
+                          'HGET': 'hash', 'HSET': 'hash', 'HGETALL': 'hash', 'HDEL': 'hash',
                           'LPUSH': 'list', 'RPUSH': 'list', 'LRANGE': 'list',
                           'SADD': 'set', 'SMEMBERS': 'set',
                           'ZADD': 'zset', 'ZRANGE': 'zset'}
