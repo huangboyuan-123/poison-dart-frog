@@ -197,11 +197,14 @@ async def redis_query(req: RedisQueryRequest):
         human_msg = (
             f"【Redis 真实数据】{data_context}\n\n"
             f"【用户需求】{req.question}\n\n"
-            f"输出格式(严格遵守):\n"
+            f"输出格式(铁律):\n"
             f"先分析。然后单独一行写 $correct-command$\n"
-            f"下一行开始写Redis命令，**每条命令独占一行**，禁止把多条命令写在同一行。\n"
-            f"示例:\n$correct-command$\nHGETALL user:1\nHGETALL user:2\n\n"
-            f"hash→HGETALL, string→GET, list→LRANGE。"
+            f"之后每条Redis命令独占一行，用回车换行分隔。\n"
+            f"示例输出:\n"
+            f"$correct-command$\n"
+            f"HGETALL user:1\n"
+            f"HGETALL user:2\n\n"
+            f"禁止: HGETALL user:1HGETALL user:2 (多条合在一行)"
         )
 
         from langchain_openai import ChatOpenAI
