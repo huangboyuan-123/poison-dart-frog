@@ -1343,7 +1343,7 @@ class MainWindow(QMainWindow):
         item = self.redis_tree.itemAt(pos)
         if not item or item.data(0, Qt.UserRole + 1) != 'key':
             return
-        key = item.data(0, Qt.UserRole + 2)
+        key = str(item.data(0, Qt.UserRole + 2) or '')
         menu = QMenu(self)
         act_del = QAction('🗑 删除键', self)
         act_del.triggered.connect(lambda _k=key: self._delete_redis_key_by_name(_k))
