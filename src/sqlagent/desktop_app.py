@@ -798,8 +798,6 @@ class MainWindow(QMainWindow):
 
         # QStackedWidget: Page0=首页, Page1=MySQL, Page2=Redis
         self.stack = QStackedWidget()
-        root_layout.addWidget(self.stack)
-
         # ── Page 0: 首页 ──
         home = QWidget()
         home_layout = QVBoxLayout(home)
@@ -874,38 +872,53 @@ class MainWindow(QMainWindow):
         mysql_ws_layout.setContentsMargins(0, 0, 0, 0)
         mysql_ws_layout.setSpacing(0)
         splitter = QSplitter(Qt.Horizontal)
-        panel_a = QWidget(); panel_b = QWidget(); panel_c = QWidget(); panel_d = QWidget()
+        panel_c = QWidget(); panel_d = QWidget()
         self.panel_c = panel_c; self.panel_d = panel_d
-        splitter.addWidget(panel_a); splitter.addWidget(panel_b)
-        splitter.addWidget(panel_c); splitter.addWidget(panel_d)
-        splitter.setStretchFactor(0, 0); splitter.setStretchFactor(1, 40)
-        splitter.setStretchFactor(2, 35); splitter.setStretchFactor(3, 0)
-        splitter.setHandleWidth(4); panel_a.setFixedWidth(200)
-        self._build_panel_a(panel_a)
-        self._build_panel_b(panel_b)
         self._build_panel_c(panel_c)
         self._build_panel_d(panel_d)
-        self._splitter = splitter  # 保存引用用于折叠D栏
         panel_d.hide()
-        mysql_ws_layout.addWidget(splitter, 1)
+
+        # ── Page 1: MySQL workspace (A+B only) ──
+        mysql_ws = QWidget()
+        mysql_ws_layout = QVBoxLayout(mysql_ws)
+        mysql_ws_layout.setContentsMargins(0, 0, 0, 0)
+        mysql_ws_layout.setSpacing(0)
+        mysql_splitter = QSplitter(Qt.Horizontal)
+        panel_a = QWidget(); panel_b = QWidget()
+        mysql_splitter.addWidget(panel_a); mysql_splitter.addWidget(panel_b)
+        mysql_splitter.setStretchFactor(0, 0); mysql_splitter.setStretchFactor(1, 1)
+        mysql_splitter.setHandleWidth(4); panel_a.setFixedWidth(200)
+        self._build_panel_a(panel_a)
+        self._build_panel_b(panel_b)
+        mysql_ws_layout.addWidget(mysql_splitter, 1)
         self.stack.addWidget(mysql_ws)  # index 1
 
-        # ── Page 2: Redis workspace ──
+        # ── Page 2: Redis workspace (A+B only) ──
         redis_ws = QWidget()
         redis_ws_layout = QVBoxLayout(redis_ws)
         redis_ws_layout.setContentsMargins(0, 0, 0, 0)
         redis_ws_layout.setSpacing(0)
-
         redis_splitter = QSplitter(Qt.Horizontal)
-        ra = QWidget(); rb = QWidget(); rc = QWidget()
-        redis_splitter.addWidget(ra); redis_splitter.addWidget(rb); redis_splitter.addWidget(rc)
-        redis_splitter.setStretchFactor(0, 0); redis_splitter.setStretchFactor(1, 50); redis_splitter.setStretchFactor(2, 50)
+        ra = QWidget(); rb = QWidget()
+        redis_splitter.addWidget(ra); redis_splitter.addWidget(rb)
+        redis_splitter.setStretchFactor(0, 0); redis_splitter.setStretchFactor(1, 1)
         redis_splitter.setHandleWidth(4); ra.setFixedWidth(250)
         self._build_redis_panel_a(ra)
         self._build_redis_panel_b(rb)
-        self._build_redis_panel_c(rc)
         redis_ws_layout.addWidget(redis_splitter, 1)
         self.stack.addWidget(redis_ws)  # index 2
+
+        # 顶层: stack(左) + C+D(右)
+        top_splitter = QSplitter(Qt.Horizontal)
+        top_splitter.addWidget(self.stack)
+        top_splitter.addWidget(panel_c)
+        top_splitter.addWidget(panel_d)
+        top_splitter.setStretchFactor(0, 1)
+        top_splitter.setStretchFactor(1, 0)
+        top_splitter.setStretchFactor(2, 0)
+        top_splitter.setHandleWidth(4)
+        self._splitter = top_splitter
+        root_layout.addWidget(top_splitter)
 
         self.stack.setCurrentIndex(0)  # 默认首页
 
