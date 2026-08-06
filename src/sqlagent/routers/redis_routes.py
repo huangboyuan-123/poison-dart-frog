@@ -218,11 +218,13 @@ async def redis_query(req: RedisQueryRequest):
             "第2行: 需要执行的操作\n"
             "然后每行一条 Redis 命令\n\n"
             "规则：\n"
-            "- **必须先看真实数据中的类型再选命令！hash用HGETALL/HGET, string用GET, list用LRANGE**\n"
-            "- Hash→HGETALL/HGET/HSET, String→GET/SET, 删除→DEL\n"
-            "- 改类型：DEL旧键→用真实数据HSET\n"
-            "- 禁止编造数据！必须使用【真实数据】中的值！\n"
-            "- 不要用 ``` 包裹，直接输出"
+            "- 真实数据已包含每个键的类型和值，**直接根据类型选命令，不要再用TYPE查**\n"
+            "- hash类型 → HGETALL key 或 HGET key field\n"
+            "- string类型 → GET key\n"
+            "- list类型 → LRANGE key 0 -1\n"
+            "- 删除 → DEL key\n"
+            "- 禁止编造！禁止TYPE！</parameter>
+
         ), ("human", "{question}")])
 
         chain = prompt | llm
