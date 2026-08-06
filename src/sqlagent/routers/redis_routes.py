@@ -247,12 +247,28 @@ async def redis_execute(req: RedisExecuteRequest):
                           'SADD': 'set', 'SMEMBERS': 'set',
                           'ZADD': 'zset', 'ZRANGE': 'zset'}
 
+        # 有效的 Redis 命令列表
+        VALID_CMDS = {'GET','SET','DEL','EXISTS','EXPIRE','TTL','TYPE','KEYS','SCAN',
+                      'HGET','HSET','HGETALL','HDEL','HLEN','HEXISTS','HKEYS','HVALS',
+                      'LPUSH','RPUSH','LPOP','RPOP','LRANGE','LLEN','LINDEX','LSET',
+                      'SADD','SREM','SMEMBERS','SISMEMBER','SCARD','SPOP',
+                      'ZADD','ZREM','ZRANGE','ZRANK','ZCARD','ZSCORE',
+                      'INCR','DECR','INCRBY','DECRBY','APPEND','STRLEN',
+                      'RENAME','RENAMENX','MOVE','SELECT','DBSIZE','FLUSHDB','FLUSHALL',
+                      'PERSIST','PEXPIRE','PEXPIREAT','PTTL','RESTORE','SORT',
+                      'ECHO','PING','QUIT','INFO','CLIENT','CONFIG','SLOWLOG',
+                      'PUBLISH','SUBSCRIBE','UNSUBSCRIBE','PUBSUB',
+                      'MULTI','EXEC','DISCARD','WATCH','UNWATCH'}
+
         for line in cmd_text.strip().split('\n'):
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
             parts = line.split()
             cmd = parts[0].upper()
+            # 跳过非命令的分析文本
+            if cmd not in VALID_CMDS:
+                continue
             args = parts[1:]
 
             # 类型敏感命令: 先检查 key 类型
