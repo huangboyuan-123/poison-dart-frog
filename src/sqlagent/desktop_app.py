@@ -178,8 +178,12 @@ def _extract_redis_commands(text: str) -> list:
         end = positions[i+1][0] if i+1 < len(positions) else len(text)
         args_text = text[pos + len(cmd):end].strip()
         # 取第一个空格分隔的参数(大多数Redis命令只有1-2个参数)
-        args = args_text.split()  # 取所有参数
-        full_cmd = ' '.join([cmd] + args)
+        args = args_text.split()
+        # 过滤: 参数必须看起来像Redis参数(不含中文/命令关键词)
+        valid_args = [a for a in args if not re.search(r'[一-鿿]', a) and a.upper() not in VALID_CMDS]
+        if not valid_args:
+            continue  # 跳过"执行HSET命令"这种假命令
+        full_cmd = ' '.join([cmd] + valid_args)
         cmds.append(full_cmd)
     return cmds
 
