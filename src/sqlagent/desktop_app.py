@@ -160,6 +160,19 @@ def _md_to_html(text: str) -> str:
     return f'<div style="color:#A9B7C6;line-height:1.7;font-size:13px;"><p style="margin:6px 0;">{text}</p></div>'
 
 
+def _extract_redis_commands(text: str) -> list:
+    """从AI分析文本中提取纯Redis命令"""
+    VALID = {'GET','SET','DEL','EXISTS','EXPIRE','TTL','TYPE','HGET','HSET','HGETALL','HDEL',
+             'LPUSH','RPUSH','LRANGE','SADD','SMEMBERS','ZADD','ZRANGE','INCR','DECR','KEYS',
+             'SCAN','RENAME','APPEND','STRLEN','LREM','ZREM','SREM','HSETNX','INCRBY','DECRBY'}
+    cmds = []
+    for line in text.strip().split('\n'):
+        parts = line.strip().split()
+        if parts and parts[0].upper() in VALID:
+            cmds.append(line.strip())
+    return cmds
+
+
 def _extract_sql_from_stream(text: str) -> str:
     """从流式文本中提取 SQL 语句并修复格式"""
     # 匹配 ```sql ... ``` 代码块
@@ -2451,7 +2464,9 @@ class MainWindow(QMainWindow):
                 return
 
             if ws == 'redis':
-                self.sql_text.setPlainText(full)
+                # 从AI输出中提取纯命令
+                cmds = _extract_redis_commands(full)
+                self.sql_text.setPlainText('\n'.join(cmds) if cmds else full)
                 self._append_log(f'[Redis] {question}\n{full[:300]}\n')
             else:
                 sql = _extract_sql_from_stream(full)
