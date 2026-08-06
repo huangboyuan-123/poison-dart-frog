@@ -170,14 +170,25 @@ def _extract_redis_commands(text: str) -> list:
     idx = text.find(marker)
     if idx >= 0:
         text = text[idx + len(marker):]
-    # 按行取有效命令
+    # 按行取有效命令; 如果同一行有多个命令则拆分
     VALID_SET = {'GET','SET','DEL','EXISTS','EXPIRE','TTL','TYPE','HGET','HSET','HGETALL','HDEL',
                  'LPUSH','RPUSH','LRANGE','SADD','SMEMBERS','ZADD','ZRANGE','INCR','DECR'}
     cmds = []
     for line in text.strip().split('\n'):
-        parts = line.strip().split()
-        if parts and parts[0].upper() in VALID_SET:
-            cmds.append(line.strip())
+        line = line.strip()
+        # 同一行多个命令: "HGETALL user:1HGETALL user:2" → 拆分
+        parts = line.split()
+        i = 0
+        while i < len(parts):
+            if parts[i].upper() in VALID_SET:
+                cmd_parts = [parts[i]]
+                i += 1
+                while i < len(parts) and parts[i].upper() not in VALID_SET:
+                    cmd_parts.append(parts[i])
+                    i += 1
+                cmds.append(' '.join(cmd_parts))
+            else:
+                i += 1
     return cmds
 
 

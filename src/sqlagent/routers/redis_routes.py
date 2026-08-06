@@ -199,8 +199,8 @@ async def redis_query(req: RedisQueryRequest):
             f"【用户需求】{req.question}\n\n"
             f"输出格式(严格遵守):\n"
             f"先分析。然后单独一行写 $correct-command$\n"
-            f"下一行开始写Redis命令，每行一条。\n"
-            f"示例: $correct-command$\nHGETALL user:1\n\n"
+            f"下一行开始写Redis命令，**每条命令独占一行**，禁止把多条命令写在同一行。\n"
+            f"示例:\n$correct-command$\nHGETALL user:1\nHGETALL user:2\n\n"
             f"hash→HGETALL, string→GET, list→LRANGE。"
         )
 
