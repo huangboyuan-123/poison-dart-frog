@@ -197,7 +197,8 @@ async def redis_query(req: RedisQueryRequest):
         human_msg = (
             f"【Redis 真实数据】{data_context}\n\n"
             f"【用户需求】{req.question}\n\n"
-            f"请先分析现有数据结构，再生成正确的 Redis 命令。禁止编造！"
+            f"【铁律】真实数据已标注类型！hash→HGETALL, string→GET, list→LRANGE。"
+            f"直接生成命令, 不要TYPE, 不要选错命令！每行一条命令。"
         )
 
         from langchain_openai import ChatOpenAI
@@ -217,13 +218,14 @@ async def redis_query(req: RedisQueryRequest):
             "第1行: 对用户问题的理解\n"
             "第2行: 需要执行的操作\n"
             "然后每行一条 Redis 命令\n\n"
-            "规则：\n"
-            "- 真实数据已包含每个键的类型和值，**直接根据类型选命令，不要再用TYPE查**\n"
-            "- hash类型 → HGETALL key 或 HGET key field\n"
-            "- string类型 → GET key\n"
-            "- list类型 → LRANGE key 0 -1\n"
+            "命令选择规则（必须遵守）：\n"
+            "- 真实数据标注了每个键的类型，直接按类型选命令！\n"
+            "- hash → HGETALL key\n"
+            "- string → GET key\n"
+            "- list → LRANGE key 0 -1\n"
+            "- set → SMEMBERS key\n"
             "- 删除 → DEL key\n"
-            "- 禁止编造！禁止TYPE！"
+            "- 绝对禁止：TYPE命令、GET查hash、HGETALL查string. 选错命令会执行失败！"
 
         ), ("human", "{question}")])
 
