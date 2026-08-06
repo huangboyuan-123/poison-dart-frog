@@ -53,9 +53,11 @@ def _extract_sql(output: str) -> Optional[str]:
             return None
     # 修复空格问题
     sql = re.sub(r'\*FROM', '* FROM', sql)
+    sql = re.sub(r'(\w)JOIN', r'\1 JOIN', sql)
     sql = re.sub(r'(\w)WHERE', r'\1 WHERE', sql)
     sql = re.sub(r'(\w)FROM', r'\1 FROM', sql)
     sql = re.sub(r'(\w)LIMIT', r'\1 LIMIT', sql)
+    sql = re.sub(r'(\w)ON\b', r'\1 ON', sql)
     return sql
 
 

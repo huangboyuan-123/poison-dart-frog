@@ -184,11 +184,13 @@ def _extract_sql_from_stream(text: str) -> str:
             return ''
     # 修复常见空格问题
     sql = re.sub(r'\*FROM', '* FROM', sql)
+    sql = re.sub(r'(\w)JOIN', r'\1 JOIN', sql)
     sql = re.sub(r'(\w)WHERE', r'\1 WHERE', sql)
     sql = re.sub(r'(\w)FROM', r'\1 FROM', sql)
     sql = re.sub(r'(\w)LIMIT', r'\1 LIMIT', sql)
     sql = re.sub(r'(\w)ORDER', r'\1 ORDER', sql)
     sql = re.sub(r'(\w)GROUP', r'\1 GROUP', sql)
+    sql = re.sub(r'(\w)ON\b', r'\1 ON', sql)
     return sql
 
 

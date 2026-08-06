@@ -198,11 +198,11 @@ async def redis_query(req: RedisQueryRequest):
             f"【Redis 真实数据】{data_context}\n\n"
             f"【用户需求】{req.question}\n\n"
             f"输出格式(铁律):\n"
-            f"先分析。然后单独一行写 $correct-command$\n"
+            f"先给出分析。然后一行写 $correct-command$\n"
             f"之后每条Redis命令独占一行，用回车换行分隔。\n"
             f"示例输出:\n"
             f"$correct-command$\n"
-            f"HGETALL user:1\n"
+            f"HGETALL user:1\n\n"
             f"HGETALL user:2\n\n"
             f"禁止: HGETALL user:1HGETALL user:2 (多条合在一行)"
         )
@@ -220,7 +220,7 @@ async def redis_query(req: RedisQueryRequest):
         prompt = ChatPromptTemplate.from_messages([(
             "system",
             "你是 Redis 专家。请根据【真实数据】分析并生成 Redis 命令。\n\n"
-            "输出格式（直接输出，不要代码块）：\n"
+            "输出格式（先是思考过程，$correct-command$后面直接输出完整指令，不要复杂内容）：\n"
             "第1行: 对用户问题的理解\n"
             "第2行: 需要执行的操作\n"
             "然后每行一条 Redis 命令\n\n"
