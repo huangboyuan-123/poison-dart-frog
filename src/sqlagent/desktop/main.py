@@ -2,20 +2,37 @@
 箭毒蛙桌面端入口
 一键启动: python src/sqlagent/desktop_app.py
 """
+import subprocess
 import sys
-import threading
+import os
+import atexit
+
+
+_backend_process = None
 
 
 def _start_backend():
-    """在后台线程启动 FastAPI 后端"""
-    import uvicorn
-    uvicorn.run("sqlagent.main:app", host="0.0.0.0", port=8000, log_level="warning")
+    """启动后端子进程"""
+    global _backend_process
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join([os.path.dirname(os.path.dirname(os.path.dirname(__file__)))] + sys.path)
+    _backend_process = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "sqlagent.main:app", "--host", "0.0.0.0", "--port", "8000"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
+    )
+
+
+def _stop_backend():
+    """关闭后端子进程"""
+    global _backend_process
+    if _backend_process:
+        _backend_process.terminate()
+        _backend_process.wait(timeout=3)
 
 
 def main():
-    # 启动后端（后台守护线程，GUI关闭时自动退出）
-    server_thread = threading.Thread(target=_start_backend, daemon=True)
-    server_thread.start()
+    _start_backend()
+    atexit.register(_stop_backend)
 
     from PySide6.QtWidgets import QApplication
     from .main_window import MainWindow
@@ -26,6 +43,7 @@ def main():
     window = MainWindow()
     window.show()
     app.exec()
+    _stop_backend()
 
 
 if __name__ == '__main__':
