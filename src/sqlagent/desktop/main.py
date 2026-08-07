@@ -1,29 +1,38 @@
 """
 箭毒蛙桌面端入口
 一键启动: python src/sqlagent/desktop_app.py
+Docker部署: docker compose up -d
 """
 import subprocess
 import sys
 import os
 import atexit
+import socket
 
 
 _backend_process = None
 
 
+def _port_in_use(port: int) -> bool:
+    """检查端口是否已被占用"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
+
+
 def _start_backend():
-    """启动后端子进程"""
+    """启动后端子进程（仅当端口未被占用时）"""
     global _backend_process
+    if _port_in_use(8000):
+        return  # Docker 或已有后端在运行
     env = os.environ.copy()
-    env["PYTHONPATH"] = os.pathsep.join([os.path.dirname(os.path.dirname(os.path.dirname(__file__)))] + sys.path)
     _backend_process = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "sqlagent.main:app", "--host", "0.0.0.0", "--port", "8000"],
+        [sys.executable, "-m", "uvicorn", "sqlagent.main:app",
+         "--host", "0.0.0.0", "--port", "8000"],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env
     )
 
 
 def _stop_backend():
-    """关闭后端子进程"""
     global _backend_process
     if _backend_process:
         _backend_process.terminate()
