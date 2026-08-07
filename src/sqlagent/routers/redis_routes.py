@@ -303,3 +303,145 @@ async def redis_execute(req: RedisExecuteRequest):
         return {"ok": True, "result": '\n'.join(results)}
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+# ═══════════════════════════════════════════
+# 扩展端点 (Phase 2-6)
+# ═══════════════════════════════════════════
+
+@router.get("/ttl/{key:path}")
+async def get_ttl(key: str):
+    try:
+        r = get_redis()
+        return {"ttl": r.ttl(key)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/expire/{key:path}")
+async def set_expire(key: str, req: dict):
+    try:
+        r = get_redis()
+        ttl = req.get('ttl', 0)
+        if ttl > 0:
+            r.expire(key, ttl)
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/persist/{key:path}")
+async def persist_key(key: str):
+    try:
+        r = get_redis(); r.persist(key)
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/rename/{key:path}")
+async def rename_key(key: str, req: dict):
+    try:
+        r = get_redis()
+        r.rename(key, req.get('new_name', key))
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/hash/{key:path}")
+async def save_hash(key: str, req: dict):
+    try:
+        r = get_redis()
+        r.delete(key)
+        vals = req.get('values', {})
+        if vals:
+            r.hset(key, mapping=vals)
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/list/{key:path}")
+async def save_list(key: str, req: dict):
+    try:
+        r = get_redis()
+        r.delete(key)
+        items = req.get('items', [])
+        if items:
+            r.rpush(key, *items)
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/set/{key:path}")
+async def save_set(key: str, req: dict):
+    try:
+        r = get_redis()
+        r.delete(key)
+        members = req.get('members', [])
+        if members:
+            r.sadd(key, *members)
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/zset/{key:path}")
+async def save_zset(key: str, req: dict):
+    try:
+        r = get_redis()
+        r.delete(key)
+        entries = req.get('entries', {})
+        if entries:
+            r.zadd(key, entries)
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/new")
+async def new_key(req: dict):
+    try:
+        r = get_redis()
+        key, typ, val = req.get('key', ''), req.get('type', 'string'), req.get('value', '')
+        if not key:
+            raise HTTPException(status_code=400, detail="键名不能为空")
+        if typ == 'string': r.set(key, val)
+        elif typ == 'hash':
+            pairs = val.split()
+            for p in pairs:
+                if '=' in p:
+                    f, v = p.split('=', 1)
+                    r.hset(key, f, v)
+        elif typ == 'list':
+            r.rpush(key, *val.split())
+        elif typ == 'set':
+            r.sadd(key, *val.split())
+        elif typ == 'zset':
+            for p in val.split():
+                if '=' in p:
+                    m, s = p.split('=', 1)
+                    r.zadd(key, {m: float(s)})
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/import")
+async def import_key(req: dict):
+    try:
+        r = get_redis()
+        key = req.get('key', '')
+        typ = req.get('type', 'string')
+        val = req.get('value', '')
+        if typ == 'string': r.set(key, str(val))
+        elif typ == 'hash': r.hset(key, mapping=val if isinstance(val, dict) else {})
+        elif typ == 'list': r.rpush(key, *val if isinstance(val, list) else [])
+        elif typ == 'set': r.sadd(key, *val if isinstance(val, list) else [])
+        elif typ == 'zset' and isinstance(val, list):
+            r.zadd(key, {str(v[0]): float(v[1]) for v in val if isinstance(v, (list, tuple)) and len(v) >= 2})
+        return {"ok": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
