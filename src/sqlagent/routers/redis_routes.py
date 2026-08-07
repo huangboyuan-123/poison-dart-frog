@@ -231,7 +231,7 @@ async def redis_query(req: RedisQueryRequest):
             "- list → LRANGE key 0 -1\n"
             "- set → SMEMBERS key\n"
             "- 删除 → DEL key\n"
-            "- 绝对禁止：TYPE命令、GET查hash、HGETALL查string. 选错命令会执行失败！"
+            "- 数据未标注类型时先用TYPE确认，选错命令会执行失败！"
 
         ), ("human", "{question}")])
 
