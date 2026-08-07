@@ -227,13 +227,17 @@ class RedisPanelsMixin:
         def do_fetch():
             try:
                 r = requests.get(f'{API_BASE}/api/redis/key/{key}', timeout=5)
-                return r.json()
+                data = r.json()
+                if r.status_code != 200:
+                    return {'error': data.get('detail', f'HTTP {r.status_code}')}
+                return data
             except Exception as e:
                 return {'error': str(e)}
 
         def callback(data):
             if data.get('error'):
                 self.redis_value_text.setPlainText(f"// 错误: {data['error']}")
+                self.redis_type_label.setText('类型: ?')
                 return
             self.redis_type_label.setText(f'类型: {data.get("type", "?")}')
             value = data.get('value', '')
