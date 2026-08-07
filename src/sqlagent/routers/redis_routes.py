@@ -281,7 +281,11 @@ async def redis_execute(req: RedisExecuteRequest):
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
-            parts = line.split()
+            import shlex
+            try:
+                parts = shlex.split(line)
+            except ValueError:
+                parts = line.split()
             cmd = parts[0].upper()
             if cmd not in VALID_CMDS:
                 continue
