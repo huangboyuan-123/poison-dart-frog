@@ -161,7 +161,7 @@ class MainWindow(QMainWindow, PanelAMixin, PanelBMixin, PanelCMixin, RedisPanels
         tools_menu.addAction(act_clear_hist)
 
         central = QWidget(self)
-        central.setStyleSheet(f'QWidget#central{{background:{BG};border-radius:10px;}}')
+        central.setStyleSheet(f'QWidget#central{{background:{BG};border-radius:10px;border:1px solid #8B3A3A;}}')
         central.setObjectName('central')
         self.setCentralWidget(central)
         root_layout = QVBoxLayout(central)
