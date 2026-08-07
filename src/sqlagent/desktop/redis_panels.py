@@ -235,30 +235,17 @@ class RedisPanelsMixin:
             if data.get('error'):
                 self.redis_value_text.setPlainText(f"// 错误: {data['error']}")
                 return
-            t = data.get('type', 'string')
-            self.redis_type_label.setText(f'类型: {t}')
+            self.redis_type_label.setText(f'类型: {data.get("type", "?")}')
             value = data.get('value', '')
-
-            # Hash→表格, String→JSON格式化, 其他→原文
-            if isinstance(value, dict):
-                lines = [f'{"Field":<20} Value', '-' * 50]
-                for k, v in value.items():
-                    v_str = str(v)
-                    if len(v_str) > 80:
-                        v_str = json.dumps(json.loads(re.sub(r'(\d+)L\\b', r'\\1', v_str)
-                            .replace('None','null').replace('True','true').replace('False','false')),
-                            indent=2, ensure_ascii=False) if v_str.startswith('{') else v_str
-                    lines.append(f'{k:<20} {v_str}')
-                value = '\\n'.join(lines)
-            elif isinstance(value, str):
+            # JSON自动格式化
+            if isinstance(value, str):
                 try:
-                    clean = re.sub(r'(\d+)L\\b', r'\\1', value)
-                    clean = clean.replace('None','null').replace('True','true').replace('False','false')
-                    value = json.dumps(json.loads(clean), indent=2, ensure_ascii=False)
-                except: pass
-            elif isinstance(value, list):
-                value = '\\n'.join(str(v) for v in value)
-
+                    clean = re.sub(r'(\d+)L\b', r'\1', value)
+                    clean = clean.replace('None', 'null').replace('True', 'true').replace('False', 'false')
+                    parsed = json.loads(clean)
+                    value = json.dumps(parsed, indent=2, ensure_ascii=False)
+                except (json.JSONDecodeError, ValueError):
+                    pass
             self.redis_value_text.setPlainText(str(value) if value is not None else '(nil)')
             self.redis_value_text.setReadOnly(False)
             self.redis_save_btn.setEnabled(True)
