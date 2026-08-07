@@ -30,7 +30,7 @@ def get_redis():
             host=os.getenv("REDIS_HOST", "localhost"),
             port=int(os.getenv("REDIS_PORT", "6379")),
             password=os.getenv("REDIS_PASSWORD", "") or None,
-            decode_responses=True,
+            decode_responses=False,  # 手动解码, 兼容GBK
         )
     return _redis_client
 
@@ -72,13 +72,12 @@ async def get_key(key: str):
             raise HTTPException(status_code=404, detail=f"键 '{key}' 不存在")
 
         def _safe_str(v):
-            """处理GBK等非UTF-8编码的bytes值"""
             if isinstance(v, bytes):
                 for enc in ['utf-8', 'gbk', 'gb2312', 'latin-1']:
                     try: return v.decode(enc)
                     except: continue
                 return v.decode('utf-8', errors='replace')
-            return v
+            return str(v) if v is not None else ''
 
         if t == 'string': value = _safe_str(r.get(key))
         elif t == 'hash': value = {_safe_str(k): _safe_str(v) for k, v in r.hgetall(key).items()}
