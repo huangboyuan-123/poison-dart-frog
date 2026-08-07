@@ -4,6 +4,7 @@ Redis 面板: 键浏览、值查看、AI命令生成/执行
 from typing import Dict
 
 import json
+import re
 import requests
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor, QFont, QIcon, QAction
@@ -233,10 +234,12 @@ class RedisPanelsMixin:
         def callback(data):
             self.redis_type_label.setText(f'类型: {data.get("type", "")}')
             value = data.get('value', '')
-            # JSON自动格式化
+            # JSON自动格式化 (兼容Java Long后缀、Python None/True/False)
             if isinstance(value, str):
                 try:
-                    value = json.dumps(json.loads(value), indent=2, ensure_ascii=False)
+                    clean = re.sub(r'(\d+)L\b', r'\1', value)
+                    clean = clean.replace('None', 'null').replace('True', 'true').replace('False', 'false')
+                    value = json.dumps(json.loads(clean), indent=2, ensure_ascii=False)
                 except (json.JSONDecodeError, ValueError):
                     pass
             self.redis_value_text.setPlainText(str(value))

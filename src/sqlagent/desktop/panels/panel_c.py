@@ -360,12 +360,14 @@ class PanelCMixin:
 
     def _format_json(self):
         """格式化当前SQL预览框中的JSON字符串"""
-        import json as _json
+        import json as _json, re as _re
         text = self.sql_text.toPlainText().strip()
         if not text:
             return
         try:
-            data = _json.loads(text)
+            clean = _re.sub(r'(\d+)L\b', r'\1', text)
+            clean = clean.replace('None', 'null').replace('True', 'true').replace('False', 'false')
+            data = _json.loads(clean)
             formatted = _json.dumps(data, indent=2, ensure_ascii=False)
             self.sql_text.setPlainText(formatted)
         except (_json.JSONDecodeError, ValueError):
