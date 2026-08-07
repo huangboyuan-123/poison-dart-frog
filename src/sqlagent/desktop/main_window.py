@@ -182,7 +182,7 @@ class MainWindow(QMainWindow, PanelAMixin, PanelBMixin, PanelCMixin, RedisPanels
 
         title = QLabel('箭毒蛙')
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet('font-size: 28px; font-weight: bold; color: #4A88C7;')
+        title.setStyleSheet('font-size: 28px; font-weight: bold; color: #8B3A3A;')
         home_layout.addWidget(title)
 
         subtitle = QLabel('选择数据源类型开始')
@@ -199,8 +199,8 @@ class MainWindow(QMainWindow, PanelAMixin, PanelBMixin, PanelCMixin, RedisPanels
         redis_card.setFixedSize(250, 300)
         redis_card.setCursor(Qt.CursorShape.PointingHandCursor)
         redis_card.setStyleSheet(f"""
-            QFrame {{ background: {BG}; border: 2px solid rgba(0,191,165,0.3); border-radius: 12px; }}
-            QFrame:hover {{ border-color: #00BFA5; background: #3C3F41; }}
+            QFrame {{ background: {BG}; border: 2px solid rgba(139,58,58,0.3); border-radius: 12px; }}
+            QFrame:hover {{ border-color: #8B3A3A; background: #3C3F41; }}
         """)
         redis_card.mousePressEvent = lambda e: self._switch_workspace('redis')
         rl = QVBoxLayout(redis_card)
