@@ -3,6 +3,7 @@ Redis 路由 — 键浏览、值读写、键删除、AI对话。
 """
 
 import os
+import shlex
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
@@ -281,7 +282,6 @@ async def redis_execute(req: RedisExecuteRequest):
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
-            import shlex
             try:
                 parts = shlex.split(line)
             except ValueError:
@@ -307,7 +307,7 @@ async def redis_execute(req: RedisExecuteRequest):
                 else:
                     results.append(f'{cmd}: {result}')
             except Exception as e:
-                results.append(f'{cmd}: ERROR - {e}')
+                results.append(f'{cmd}: ERROR - {e} (args: {args})')
         return {"ok": True, "result": '\n'.join(results)}
     except Exception as e:
         return {"ok": False, "error": str(e)}
