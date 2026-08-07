@@ -41,6 +41,7 @@ QPushButton:disabled { background: #232328; color: #5A6270; }
 QTableWidget {
     background: #232328; color: #A9B7C6; gridline-color: rgba(255,255,255,0.04);
     border: none; selection-background-color: #8B3A3A;
+    alternate-background-color: #252530;
 }
 QTableWidget::item { padding: 2px 6px; }
 QHeaderView::section {
