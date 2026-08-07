@@ -149,7 +149,7 @@ SQL 语法验证（EXPLAIN 检查）
 | 背景 | `#2B2B2B` | 主窗口背景 |
 | 面板 | `#3C3F41` | 侧边栏、标签页、卡片 |
 | 输入框 | `#3C3F41` | 文本输入、下拉框 |
-| 强调色 | `#00BFA5` | 按钮、选中、链接（箭毒蛙青绿） |
+| 强调色 | `#8B3A3A` | 按钮、选中、链接（箭毒蛙青绿） |
 | 文字 | `#A9B7C6` | 正文内容 |
 | 辅助文字 | `#808080` | 说明、占位符 |
 | 成功 | `#6A8759` | 执行成功提示 |
@@ -197,13 +197,9 @@ SQL 语法验证（EXPLAIN 检查）
 ## 📸 运行截图
 
 <p align="center">
-  <img src="运行结果/sql执行效果1.png" width="45%" alt="SQL执行效果">
+  <img src="运行结果/mysql执行效果1.png" width="45%" alt="MySQL执行效果">
   &nbsp;&nbsp;
-  <img src="运行结果/sql执行结果2.png" width="45%" alt="查询结果+AI分析">
-</p>
-
-<p align="center">
-  <img src="运行结果/Redis模块.png" width="45%" alt="Redis模块">
+  <img src="运行结果/redis操作页面.png" width="45%" alt="Redis操作页面">
 </p>
 
 ---
@@ -663,7 +659,7 @@ A: 完全开源免费（MIT 协议）。AI 功能需要你自己的 API Key（De
 - ✨ **导入导出**：CSV/Excel/JSON
 - ✨ **Docker 部署**：API+MySQL+Redis 三容器编排
 - ✨ **一键启动脚本**：start.bat/sh
-- 🎨 **PyCharm Darcula 主题**：2B2B2B 暗色 + 箭毒蛙青绿（#00BFA5）
+- 🎨 **PyCharm Darcula 主题**：2B2B2B 暗色 + 箭毒蛙青绿（#8B3A3A）
 - 🔒 **安全加固**：参数化查询防注入、高危 SQL 拦截、类型安全检查
 - ♻️ **代码重构**：2740 行单文件 → 19 模块子包
 
