@@ -70,11 +70,21 @@ async def get_key(key: str):
         t = r.type(key)
         if t == 'none':
             raise HTTPException(status_code=404, detail=f"键 '{key}' 不存在")
-        if t == 'string': value = r.get(key)
-        elif t == 'hash': value = r.hgetall(key)
-        elif t == 'list': value = r.lrange(key, 0, -1)
-        elif t == 'set': value = list(r.smembers(key))
-        elif t == 'zset': value = r.zrange(key, 0, -1, withscores=True)
+
+        def _safe_str(v):
+            """处理GBK等非UTF-8编码的bytes值"""
+            if isinstance(v, bytes):
+                for enc in ['utf-8', 'gbk', 'gb2312', 'latin-1']:
+                    try: return v.decode(enc)
+                    except: continue
+                return v.decode('utf-8', errors='replace')
+            return v
+
+        if t == 'string': value = _safe_str(r.get(key))
+        elif t == 'hash': value = {_safe_str(k): _safe_str(v) for k, v in r.hgetall(key).items()}
+        elif t == 'list': value = [_safe_str(v) for v in r.lrange(key, 0, -1)]
+        elif t == 'set': value = [_safe_str(v) for v in r.smembers(key)]
+        elif t == 'zset': value = [(_safe_str(v[0]), v[1]) for v in r.zrange(key, 0, -1, withscores=True)]
         else: value = str(r.execute_command('DUMP', key))
         return {"key": key, "type": t, "value": value}
     except HTTPException:
