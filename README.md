@@ -1,154 +1,215 @@
-# 箭毒蛙 — AI + SQL 数据库操纵工具
+<div align="center">
 
-[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://python.org)
-[![PySide6](https://img.shields.io/badge/GUI-PySide6-41CD52.svg)](https://doc.qt.io/qtforpython-6/)
-[![FastAPI](https://img.shields.io/badge/API-FastAPI-009688.svg)](https://fastapi.tiangolo.com)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+<img src="src/sqlagent/static/database.png" width="120" alt="logo">
 
-> 🐸 箭毒蛙 — 集 AI 自然语言交互、SQL 执行、数据可视编辑于一体的数据库桌面管理工具。支持 MySQL 和 Redis 双数据源。
+# 🐸 箭毒蛙 Poison Dart Frog
 
----
+### 下一代 AI 数据库桌面管理工具
 
-## ✨ 功能亮点
+[![Python](https://img.shields.io/badge/Python-3.9+-blue?logo=python)](https://python.org)
+[![PySide6](https://img.shields.io/badge/GUI-PySide6-41CD52?logo=qt)](https://doc.qt.io/qtforpython-6/)
+[![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi)](https://fastapi.tiangolo.com)
+[![LangChain](https://img.shields.io/badge/AI-LangChain-1C3C3C?logo=langchain)](https://langchain.com)
+[![MySQL](https://img.shields.io/badge/DB-MySQL-4479A1?logo=mysql)](https://mysql.com)
+[![Redis](https://img.shields.io/badge/Cache-Redis-DC382D?logo=redis)](https://redis.io)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/huangboyuan-123/poison-dart-frog?style=social)](https://github.com/huangboyuan-123/poison-dart-frog)
 
-### 🤖 AI 智能助手
-- **自然语言 → SQL**：用中文描述需求，AI 自动生成并执行 SQL
-- **自然语言 → Redis 命令**：支持 String/Hash/List/Set/ZSet 全类型
-- **上下文感知**：自动读取数据库 Schema，生成精准查询
+**中文** | [English](#)
 
-### 🗄️ 数据库管理（类 Navicat 体验）
-- **可视化表设计器**：增删改列、修改类型/默认值，自动生成 ALTER TABLE
-- **内联数据编辑**：双击单元格直接修改，批量保存/撤销
-- **行级操作**：新增行、删除行、外键跳转
-- **排序筛选**：表头点击排序、右键快速筛选
-- **导入导出**：CSV / Excel / JSON 导入导出
-
-### 🔴 Redis 管理
-- **键树浏览**：层级化 Key 展示 + 类型着色
-- **值查看编辑**：支持所有数据类型
-- **AI 命令生成**：自然语言 → Redis 命令
-
-### 🎨 专业界面
-- **PyCharm Darcula 暗色主题**
-- **三栏布局**：数据库树 | 数据浏览 | AI 助手
-- **可拖拽分割线 + 圆角无边框窗口**
+</div>
 
 ---
 
-## 📸 运行截图
+## 🔥 为什么是箭毒蛙？
 
-### SQL 执行效果
-![SQL执行](运行结果/sql执行效果1.png)
+**用嘴写 SQL 的时代来了。**
 
-### 查询结果 + AI 分析
-![查询结果](运行结果/sql执行结果2.png)
+你不再需要记住 `SELECT * FROM employees WHERE department_id IN (SELECT id FROM departments WHERE name = 'Engineering')`，只需要告诉 AI：
 
-### Redis 模块
-![Redis](运行结果/Redis模块.png)
+> _"帮我查一下工程部有多少员工，他们的平均工资是多少"_
+
+AI 自动查表结构 → 生成 SQL → 执行 → 返回可视化结果。整个过程不到 3 秒。
 
 ---
 
-## 🚀 快速开始
+## ✨ 核心特性
 
-### 环境要求
-- Python >= 3.9
-- MySQL 8.0+ / Redis（可选）
-- DeepSeek API Key（或其他 OpenAI 兼容接口）
+<table>
+<tr>
+<td width="50%">
 
-### 安装
+### 🤖 AI 自然语言驱动
+- 🗣️ **中文输入** → SQL / Redis 命令
+- 🧠 **自动查表结构**，无需手写 Schema
+- 📝 **流式思考过程**，实时查看 AI 推理
+- 🔧 **多步工具调用**：查表→分析→生成→执行
+- 🌐 支持 DeepSeek / OpenAI / 任何兼容 API
+
+</td>
+<td width="50%">
+
+### 🗄️ Navicat 级数据管理
+- 📊 **可视化表设计器**（增删改列，自动生成 DDL）
+- ✏️ **内联单元格编辑**（双击即改，批量保存）
+- 🔍 **点击表头排序** / 右键筛选
+- 🔗 **外键跳转**（点击 FK 值直达引用行）
+- 📥📤 **导入导出** CSV / Excel / JSON
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🎨 PyCharm 暗色主题
+- 🖤 Darcula 配色（#2B2B2B），护眼舒适
+- 🐸 箭毒蛙青绿色强调（#00BFA5）
+- 💻 JetBrains Mono 字体，代码感十足
+- 🪟 无边框圆角窗口 + 四栏可拖拽布局
+- 🖱️ 边缘拉伸 + 标题栏拖拽移动
+
+</td>
+<td width="50%">
+
+### 🔴 Redis 全功能支持
+- 🌳 **键树浏览**（层级化，类型着色）
+- 👁️ **值查看/编辑**（String/Hash/List/Set/ZSet）
+- 🤖 **AI 命令生成**（自然语言 → Redis 命令）
+- 🔒 **类型安全拦截**（Hash 不会用 GET 误查）
+
+</td>
+</tr>
+</table>
+
+---
+
+## 📸 预览
+
+<p align="center">
+  <img src="运行结果/sql执行效果1.png" width="45%" alt="SQL执行">
+  &nbsp;&nbsp;
+  <img src="运行结果/sql执行结果2.png" width="45%" alt="查询结果">
+</p>
+
+<p align="center">
+  <img src="运行结果/Redis模块.png" width="45%" alt="Redis模块">
+</p>
+
+---
+
+## 🚀 3 分钟快速开始
 
 ```bash
-git clone https://gitee.com/huang-baiyuan123/sqlagent.git
-cd sqlagent
+# 1. 克隆
+git clone https://github.com/huangboyuan-123/poison-dart-frog.git
+cd poison-dart-frog
+
+# 2. 安装
 pip install -e ".[desktop]"
-```
 
-### 配置
-
-```bash
+# 3. 配置 API Key
 cp .env.example .env
-# 编辑 .env 填入 API Key 和数据库连接信息
-```
+# 编辑 .env，填入 DEEPSEEK_API_KEY=sk-xxx
 
-或启动后在菜单栏 **设置 → AI 配置** 弹窗中直接修改。
-
-### 启动
-
-**后端 API**：
-```bash
+# 4. 启动后端
 uvicorn sqlagent.main:app --host 0.0.0.0 --port 8000 --reload
-```
 
-**桌面端**：
-```bash
+# 5. 启动桌面端（新终端）
 python src/sqlagent/desktop_app.py
 ```
 
-启动后访问 `http://localhost:8000/docs` 查看 API 文档。
+> 💡 没有 MySQL？Docker 一键启动：`docker compose up -d mysql`
 
 ---
 
-## 🏗️ 项目结构
+## 🏗️ 技术架构
 
 ```
-sqlagent/
-├── src/sqlagent/
-│   ├── desktop_app.py       # PySide6 桌面端 (约 2300 行)
-│   ├── main.py              # FastAPI 应用入口
-│   ├── agent.py             # LangChain AI Agent 核心
-│   ├── database.py          # MySQL 数据库管理器
-│   ├── tools.py             # Agent 工具集
-│   ├── config.py            # 配置管理
-│   ├── prompts.py           # AI 提示词模板
-│   ├── models.py            # Pydantic 数据模型
-│   ├── routers/
-│   │   ├── query.py         # /api/query, /api/execute
-│   │   ├── schema.py        # /api/schema, /api/databases
-│   │   ├── table.py         # /api/table (增删改查)
-│   │   ├── redis_routes.py  # /api/redis (键值操作+AI)
-│   │   └── health.py        # /health
-│   └── static/              # 图标资源
-├── tests/                   # 测试
-├── .env.example             # 环境变量模板
-└── docker-compose.yml       # Docker 部署
+┌─────────────────────────────────────────────────────┐
+│                   PySide6 桌面端                      │
+│  ┌──────┬────────────┬────────────┬──────────┐      │
+│  │ A 树 │  B 数据浏览 │  C AI 助手  │ D 思考    │      │
+│  └──────┴────────────┴────────────┴──────────┘      │
+│         QThread 异步  │  QSyntaxHighlighter         │
+└──────────────────┬──────────────────────────────────┘
+                   │ HTTP (localhost:8000)
+┌──────────────────▼──────────────────────────────────┐
+│                  FastAPI 后端                         │
+│  ┌─────────┬──────────┬──────────┬──────────┐       │
+│  │ /query  │ /execute │ /schema  │ /table   │       │
+│  │ /redis  │ /health  │ /stream  │ /ddl     │       │
+│  └─────────┴──────────┴──────────┴──────────┘       │
+│         LangChain Agent  │  SQLAlchemy              │
+└──────────────────┬──────────────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────────────┐
+│              MySQL 8.0  │  Redis 7.0                 │
+└─────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🔧 技术栈
+## 📡 API 一览
 
-| 层 | 技术 |
-|---|---|
-| 桌面 GUI | PySide6 (Qt for Python) |
-| 后端 API | FastAPI + Uvicorn |
-| AI Agent | LangChain + DeepSeek / OpenAI |
-| 数据库 | SQLAlchemy + PyMySQL |
-| Redis | redis-py |
-| 语法高亮 | QSyntaxHighlighter |
-| Excel | openpyxl |
-
----
-
-## 📡 API 端点
-
-| 方法 | 路径 | 说明 |
+| 方法 | 端点 | 说明 |
 |------|------|------|
-| `GET` | `/health` | 健康检查 |
-| `POST` | `/api/query` | AI 自然语言 → SQL |
-| `POST` | `/api/execute` | 执行 SQL |
-| `GET` | `/api/databases` | 列出所有数据库 |
-| `GET` | `/api/schema` | 获取表结构 |
-| `POST` | `/api/table/update` | 更新行 |
-| `POST` | `/api/table/insert` | 插入行 |
-| `POST` | `/api/table/delete` | 删除行 |
-| `GET` | `/api/table/ddl` | 查看建表 DDL |
-| `GET` | `/api/redis/keys` | Redis 键列表 |
-| `GET` | `/api/redis/key/{key}` | Redis 键值 |
-| `POST` | `/api/redis/query` | Redis AI 命令生成 |
-| `POST` | `/api/redis/execute` | 执行 Redis 命令 |
+| `POST` | `/api/query` | 🤖 自然语言 → SQL |
+| `POST` | `/api/query/stream` | 📡 流式 AI 思考 |
+| `POST` | `/api/execute` | ⚡ 执行 SQL |
+| `GET` | `/api/databases` | 📊 列出所有数据库 |
+| `GET` | `/api/schema` | 📋 表结构 |
+| `POST` | `/api/table/update` | ✏️ 更新行 |
+| `POST` | `/api/table/insert` | ➕ 插入行 |
+| `POST` | `/api/table/delete` | 🗑 删除行 |
+| `DELETE` | `/api/table/drop` | 💣 删表 |
+| `GET` | `/api/redis/keys` | 🔑 键列表 |
+| `POST` | `/api/redis/query` | 🤖 Redis AI |
+
+---
+
+## 🧩 项目结构
+
+```
+poison-dart-frog/
+├── src/sqlagent/
+│   ├── desktop/            # PySide6 桌面端模块
+│   │   ├── dialogs/        # 弹窗(连接/设计器/设置)
+│   │   ├── panels/         # A/B/C/D 四栏面板
+│   │   ├── main_window.py  # 主窗口
+│   │   └── main.py         # 入口
+│   ├── routers/            # FastAPI 路由
+│   │   ├── query.py        # AI查询 + 流式
+│   │   ├── table.py        # 表CRUD + DROP
+│   │   ├── schema.py       # 数据库结构
+│   │   ├── redis_routes.py # Redis 全功能
+│   │   └── health.py       # 健康检查
+│   ├── agent.py            # LangChain Agent
+│   ├── database.py         # MySQL 管理器
+│   ├── tools.py            # Agent 工具集
+│   ├── prompts.py          # AI 提示词
+│   └── static/             # 图标资源
+├── tests/                  # 测试
+├── docker-compose.yml      # Docker 部署
+└── .env.example            # 配置模板
+```
+
+---
+
+## 🌟 Star History
+
+如果这个项目对你有用，请给一颗 ⭐ Star！你的支持是我持续更新的动力。
+
+<a href="https://star-history.com/#huangboyuan-123/poison-dart-frog&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=huangboyuan-123/poison-dart-frog&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=huangboyuan-123/poison-dart-frog&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=huangboyuan-123/poison-dart-frog&type=Date" />
+  </picture>
+</a>
 
 ---
 
 ## 📄 License
 
-MIT
+MIT © 2025 [会飞的程序源](https://github.com/huangboyuan-123)
+
