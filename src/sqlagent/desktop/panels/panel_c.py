@@ -80,7 +80,7 @@ class PanelCMixin:
         sql_ly = QVBoxLayout(sql_group)
         self.sql_text = QTextEdit()
         self.sql_text.setPlaceholderText('-- AI 生成的 SQL 将显示在这里')
-        self.sql_text.setReadOnly(True)
+        self.sql_text.setReadOnly(False)  # 可手动写SQL
         self.sql_text.setLineWrapMode(QTextEdit.NoWrap)
         font = QFont('Consolas', 10)
         font.setStyleHint(QFont.Monospace)
