@@ -96,6 +96,7 @@ class PanelCMixin:
         self.exec_btn.clicked.connect(self._execute_sql)
         exec_row.addWidget(self.exec_btn)
         exec_row.addWidget(QPushButton('导出 CSV', clicked=self._export_csv))
+        exec_row.addWidget(QPushButton('格式化 JSON', clicked=self._format_json))
         self.tx_check = QCheckBox('开启事务')
         exec_row.addWidget(self.tx_check)
         exec_row.addStretch()
@@ -356,6 +357,19 @@ class PanelCMixin:
         sql = self.sql_text.toPlainText().strip()
         if sql and not sql.startswith('-- AI'):
             QApplication.clipboard().setText(sql)
+
+    def _format_json(self):
+        """格式化当前SQL预览框中的JSON字符串"""
+        import json as _json
+        text = self.sql_text.toPlainText().strip()
+        if not text:
+            return
+        try:
+            data = _json.loads(text)
+            formatted = _json.dumps(data, indent=2, ensure_ascii=False)
+            self.sql_text.setPlainText(formatted)
+        except (_json.JSONDecodeError, ValueError):
+            QMessageBox.information(self, '提示', '当前内容不是有效的JSON格式')
 
     def _export_csv(self):
         """导出当前 Tab 数据 (支持 CSV/Excel)"""
