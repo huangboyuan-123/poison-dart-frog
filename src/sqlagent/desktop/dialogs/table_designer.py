@@ -13,6 +13,15 @@ from PySide6.QtWidgets import (
 from ..constants import API_BASE, ICONS_DIR
 
 
+def _tint_icon(path: str, color: str = "#A9B7C6") -> QIcon:
+    from PySide6.QtGui import QPixmap, QPainter
+    pm = QPixmap(path)
+    if pm.isNull(): return QIcon(path)
+    p = QPainter(pm); p.setCompositionMode(QPainter.CompositionMode_SourceIn)
+    p.fillRect(pm.rect(), QColor(color)); p.end()
+    return QIcon(pm)
+
+
 class _RoundedWidget(QWidget):
     """带抗锯齿圆角的容器"""
 
@@ -62,7 +71,7 @@ class TableDesignerDialog(QDialog):
         del_btn.clicked.connect(self._delete_column)
         btn_row.addWidget(del_btn)
         btn_row.addStretch()
-        save_icon = QIcon(str(ICONS_DIR / 'diskette.png'))
+        save_icon = _tint_icon(str(ICONS_DIR / 'diskette.png'))
         save_btn = QPushButton(save_icon, '保存修改')
         save_btn.setProperty('accent', True)
         save_btn.clicked.connect(self._save)

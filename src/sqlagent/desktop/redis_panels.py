@@ -20,6 +20,15 @@ from .constants import (
 from .workers import ApiWorker
 
 
+def _tint_icon(path: str, color: str = "#A9B7C6") -> QIcon:
+    from PySide6.QtGui import QPixmap, QPainter
+    pm = QPixmap(path)
+    if pm.isNull(): return QIcon(path)
+    p = QPainter(pm); p.setCompositionMode(QPainter.CompositionMode_SourceIn)
+    p.fillRect(pm.rect(), QColor(color)); p.end()
+    return QIcon(pm)
+
+
 class RedisPanelsMixin:
     """Mixin providing Redis panel methods for MainWindow."""
 
@@ -73,7 +82,7 @@ class RedisPanelsMixin:
         layout.addWidget(self.redis_value_text, 1)
 
         save_row = QHBoxLayout()
-        save_icon = QIcon(str(ICONS_DIR / 'diskette.png'))
+        save_icon = _tint_icon(str(ICONS_DIR / 'diskette.png'))
         self.redis_save_btn = QPushButton(save_icon, '保存修改')
         self.redis_save_btn.setProperty('accent', True)
         self.redis_save_btn.clicked.connect(self._save_redis_value)

@@ -208,14 +208,9 @@ async def redis_query(req: RedisQueryRequest):
         human_msg = (
             f"【Redis 真实数据】{data_context}\n\n"
             f"【用户需求】{req.question}\n\n"
-            f"输出格式(铁律):\n"
-            f"先给出分析。然后一行写 $correct-command$\n"
-            f"之后每条Redis命令独占一行，用回车换行分隔。\n"
-            f"示例输出:\n"
-            f"$correct-command$\n"
-            f"HGETALL user:1\n\n"
-            f"HGETALL user:2\n\n"
-            f"禁止: 用引号包裹值 (如 SET k \"v\"), 多条合在一行"
+            f"最后用```代码块包裹每条Redis命令，每条命令独占一个代码块。\n"
+            f"示例:\n```\nHGETALL user:1\n```\n```\nHSET user:2 name Alice\n```\n"
+            f"禁止: 引号包裹值、合并多行为一行"
         )
 
         from langchain_openai import ChatOpenAI
@@ -231,10 +226,10 @@ async def redis_query(req: RedisQueryRequest):
         prompt = ChatPromptTemplate.from_messages([(
             "system",
             "你是 Redis 专家。请根据【真实数据】分析并生成 Redis 命令。\n\n"
-            "输出格式（先是思考过程，$correct-command$后面直接输出完整指令，不要复杂内容）：\n"
-            "第1行: 对用户问题的理解\n"
-            "第2行: 需要执行的操作\n"
-            "然后每行一条 Redis 命令\n\n"
+            "输出格式: 先分析数据结构，然后用```代码块包裹每条Redis命令，每个```只包含一条命令。\n"
+            "示例:\n"
+            "```\nHGETALL user:1\n```\n"
+            "```\nSET counter 100\n```\n"
             "命令选择规则（必须遵守）：\n"
             "- 真实数据标注了每个键的类型，直接按类型选命令！\n"
             "- hash → HGETALL key\n"

@@ -23,6 +23,15 @@ from .panels.panel_c import PanelCMixin
 from .redis_panels import RedisPanelsMixin
 
 
+def _tint_icon(path: str, color: str = "#A9B7C6") -> QIcon:
+    from PySide6.QtGui import QPixmap, QPainter
+    pm = QPixmap(path)
+    if pm.isNull(): return QIcon(path)
+    p = QPainter(pm); p.setCompositionMode(QPainter.CompositionMode_SourceIn)
+    p.fillRect(pm.rect(), QColor(color)); p.end()
+    return QIcon(pm)
+
+
 class MainWindow(QMainWindow, PanelAMixin, PanelBMixin, PanelCMixin, RedisPanelsMixin):
     def __init__(self):
         super().__init__()
@@ -137,7 +146,7 @@ class MainWindow(QMainWindow, PanelAMixin, PanelBMixin, PanelCMixin, RedisPanels
         set_menu.addAction(act_ai)
 
         switch_menu = menubar.addMenu('切换')
-        home_icon = QIcon(str(ICONS_DIR / 'home.png'))
+        home_icon = _tint_icon(str(ICONS_DIR / 'home.png'))
         act_home = QAction(home_icon, '首页', self)
         act_home.triggered.connect(lambda: self._switch_workspace('home'))
         switch_menu.addAction(act_home)

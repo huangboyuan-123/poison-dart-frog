@@ -18,6 +18,15 @@ from PySide6.QtWidgets import (
     QTabBar, QTabWidget, QVBoxLayout, QWidget, QInputDialog,
 )
 
+def _tint_icon(path: str, color: str = '#A9B7C6') -> QIcon:
+    from PySide6.QtGui import QPixmap, QPainter
+    pm = QPixmap(path)
+    if pm.isNull(): return QIcon(path)
+    p = QPainter(pm); p.setCompositionMode(QPainter.CompositionMode_SourceIn)
+    p.fillRect(pm.rect(), QColor(color)); p.end()
+    return QIcon(pm)
+
+
 from ..constants import (
     API_BASE, BG, DANGER_COLOR, ICONS_DIR, MUTED, SUCCESS_COLOR,
 )
@@ -56,23 +65,18 @@ class PanelBMixin:
         self.data_tabs.tabCloseRequested.connect(self._close_data_tab)
         self.data_tabs.currentChanged.connect(self._on_tab_changed)
         self.data_tabs.setMovable(True)
-        self._tab_close_icon = QIcon(str(ICONS_DIR / 'cancel.png'))
+        self._tab_close_icon = _tint_icon(str(ICONS_DIR / 'cancel.png'))
         layout.addWidget(self.data_tabs, 1)
 
         # 编辑工具栏
         edit_bar = QHBoxLayout()
-        save_icon = QIcon(str(ICONS_DIR / 'diskette.png'))
+        save_icon = _tint_icon(str(ICONS_DIR / 'diskette.png'))
         self.save_btn = QPushButton(save_icon, '保存修改')
         self.save_btn.setFixedHeight(24)
         self.save_btn.setProperty('accent', True)
         self.save_btn.clicked.connect(self._save_edits)
         self.save_btn.setEnabled(False)
         edit_bar.addWidget(self.save_btn)
-        self.undo_btn = QPushButton('↩ 撤销')  # undo emoji
-        self.undo_btn.setFixedHeight(24)
-        self.undo_btn.clicked.connect(self._undo_edits)
-        self.undo_btn.setEnabled(False)
-        edit_bar.addWidget(self.undo_btn)
         edit_bar.addStretch()
         add_btn = QPushButton('+ 新增行')
         add_btn.setFixedHeight(24)
@@ -335,28 +339,10 @@ class PanelBMixin:
     def _update_edit_buttons(self):
         has_edits = bool(self._edits)
         self.save_btn.setEnabled(has_edits)
-        self.undo_btn.setEnabled(has_edits)
         if has_edits:
             self.save_btn.setText(f'保存 ({len(self._edits)})')
         else:
             self.save_btn.setText('保存修改')
-
-    def _undo_edits(self):
-        """撤销所有编辑"""
-        for key in list(self._edits.keys()):
-            row_str, col_str = key.split('_')
-            r, c = int(row_str), int(col_str)
-            info = self._current_tab_info()
-            rows = info.get('rows', [])
-            if r < len(rows) and c < len(rows[r]):
-                tbl = self._current_table()
-                if tbl and tbl.item(r, c):
-                    orig = rows[r][c]
-                    tbl.item(r, c).setText('' if orig is None else str(orig))
-                    if orig is None:
-                        tbl.item(r, c).setForeground(QColor(MUTED))
-        self._edits.clear()
-        self._update_edit_buttons()
 
     def _save_edits(self):
         """保存所有修改到数据库"""

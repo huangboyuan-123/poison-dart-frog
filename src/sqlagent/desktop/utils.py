@@ -37,13 +37,16 @@ def _md_to_html(text: str) -> str:
 
 
 def _extract_redis_commands(text: str) -> list:
-    """截取 correct-command 标识符后面的所有内容"""
-    marker = '$correct-command$'
-    idx = text.find(marker)
-    if idx < 0:
-        return []
-    after = text[idx + len(marker):].strip()
-    return [line.strip() for line in after.split(chr(10)) if line.strip()]
+    """从AI输出中提取 ``` 代码块中的Redis命令"""
+    import re
+    cmds = re.findall(r'```\s*\n?(.*?)\n?```', text, re.DOTALL)
+    result = []
+    for c in cmds:
+        for line in c.strip().split('\n'):
+            line = line.strip()
+            if line and not line.startswith('#'):
+                result.append(line)
+    return result
 
 
 def _extract_sql_from_stream(text: str) -> str:

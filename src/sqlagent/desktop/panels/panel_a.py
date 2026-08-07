@@ -3,12 +3,20 @@ Panel A: 数据库菜单 / Schema 树 / 连接管理
 """
 import requests
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QColor, QIcon, QAction
+from PySide6.QtGui import QColor, QIcon, QAction, QPixmap, QPainter
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QHBoxLayout, QLabel, QMenu,
     QMessageBox, QPushButton, QTreeWidget, QTreeWidgetItem,
     QVBoxLayout, QWidget, QApplication,
 )
+
+def _tint_icon(path: str, color: str = '#A9B7C6') -> QIcon:
+    pm = QPixmap(path)
+    if pm.isNull(): return QIcon(path)
+    p = QPainter(pm); p.setCompositionMode(QPainter.CompositionMode_SourceIn)
+    p.fillRect(pm.rect(), QColor(color)); p.end()
+    return QIcon(pm)
+
 
 from ..constants import (
     API_BASE, BG, DANGER_COLOR, ICONS_DIR, MUTED, SUCCESS_COLOR, WARNING_COLOR,
@@ -63,7 +71,7 @@ class PanelAMixin:
         self.sidebar_combo.setMinimumHeight(24)
         self.sidebar_combo.currentIndexChanged.connect(self._on_sidebar_db_select)
         conn_row.addWidget(self.sidebar_combo, 1)
-        del_icon = QIcon(str(ICONS_DIR / 'cancel.png'))
+        del_icon = _tint_icon(str(ICONS_DIR / 'cancel.png'))
         del_btn = QPushButton(del_icon, '')
         del_btn.setFixedSize(22, 22)
         del_btn.setIconSize(QSize(16, 16))
@@ -104,7 +112,7 @@ class PanelAMixin:
 
             for db_name in dbs:
                 db_item = QTreeWidgetItem([db_name])
-                db_icon = QIcon(str(ICONS_DIR / 'big_database.png'))
+                db_icon = _tint_icon(str(ICONS_DIR / 'big_database.png'))
                 db_item.setIcon(0, db_icon)
                 db_item.setData(0, Qt.UserRole + 1, 'database')
                 db_item.setData(0, Qt.UserRole + 2, db_name)
@@ -161,7 +169,7 @@ class PanelAMixin:
                 col_item.setData(0, Qt.UserRole + 1, 'column')
                 col_item.setForeground(0, QColor(MUTED))
                 if col.get('key') == 'PRI':
-                    col_item.setIcon(0, QIcon(str(ICONS_DIR / 'mysql_icon' / 'key.png')))
+                    col_item.setIcon(0, _tint_icon(str(ICONS_DIR / 'mysql_icon' / 'key.png')))
                 item.addChild(col_item)
 
     def _on_tree_menu(self, pos):

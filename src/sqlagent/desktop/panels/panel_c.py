@@ -193,7 +193,8 @@ class PanelCMixin:
             prompt = question
             stream_url = f'{API_BASE}/api/redis/query/stream'
         else:
-            prompt = question + '\n\n请详细分析并给出SQL语句。先查看表结构，再逐步生成正确的SQL。'
+            prompt = (question + '\n\n你是MySQL专家。步骤:1)用list_tables和get_table_schema查看结构 '
+                      '2)根据结构生成SQL 3)**必须**输出```sql\n你的SQL语句;\n``` 不要只分析不写SQL！')
             stream_url = f'{API_BASE}/api/query/stream'
 
         self._stream_worker = StreamWorker(stream_url, {'question': prompt})

@@ -2,7 +2,7 @@
 AI 设置弹窗
 """
 from PySide6.QtWidgets import (
-    QDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
+    QComboBox, QDialog, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
     QMessageBox, QPushButton, QVBoxLayout,
 )
 
@@ -24,6 +24,13 @@ class SettingsDialog(QDialog):
         layout.setSpacing(12)
 
         layout.addWidget(QLabel('<b>LLM API 配置</b>'))
+
+        # Provider 选择
+        self.prov_combo = QComboBox()
+        self.prov_combo.addItems(['DeepSeek', 'OpenAI', 'Ollama (本地)'])
+        self.prov_combo.currentTextChanged.connect(self._on_provider_change)
+        layout.addWidget(QLabel('服务商:'))
+        layout.addWidget(self.prov_combo)
         layout.addWidget(QLabel('修改后重启后端生效'))
 
         self.fields = {}
@@ -62,6 +69,16 @@ class SettingsDialog(QDialog):
         btns.addWidget(save_btn)
         btns.addWidget(QPushButton('取消', clicked=self.reject))
         layout.addLayout(btns)
+
+    def _on_provider_change(self, text):
+        providers = {
+            'DeepSeek': ('https://api.deepseek.com/v1', 'deepseek-chat'),
+            'OpenAI': ('https://api.openai.com/v1', 'gpt-4o'),
+            'Ollama (本地)': ('http://localhost:11434/v1', 'qwen2.5:3b'),
+        }
+        url, model = providers.get(text, ('', ''))
+        if url: self.fields['LLM_BASE_URL'].setText(url)
+        if model: self.fields['LLM_MODEL'].setText(model)
 
     def _load_env(self):
         """从 .env 和环境变量读取当前值"""
