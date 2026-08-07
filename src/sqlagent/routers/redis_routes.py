@@ -283,10 +283,10 @@ async def redis_execute(req: RedisExecuteRequest):
                       'PUBLISH','SUBSCRIBE','UNSUBSCRIBE','PUBSUB',
                       'MULTI','EXEC','DISCARD','WATCH','UNWATCH'}
 
-        # 预拆分黏连命令: HSET k vHSET k2 v2 → HSET k v\nHSET k2 v2
+        # 预拆分黏连命令 (用\b避免HSET被误劈成H+SET)
         for kw in ['HSET','HGETALL','HGET','HDEL','GET','SET','DEL','LPUSH','RPUSH','LRANGE',
                     'SADD','SMEMBERS','ZADD','ZRANGE','TYPE','INCR','DECR','EXPIRE','TTL']:
-            cmd_text = _re.sub(rf'(\S)({kw}\s)', r'\1\n\2', cmd_text)
+            cmd_text = _re.sub(rf'(?<!,)(?<!\w)({kw}\s)', r'\n\1', cmd_text)
 
         for line in cmd_text.strip().split('\n'):
             line = line.strip()
