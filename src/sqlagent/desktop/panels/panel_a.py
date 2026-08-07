@@ -154,13 +154,14 @@ class PanelAMixin:
             columns = item.data(0, Qt.UserRole) or []
             for col in columns:
                 key_info = ''
-                if col.get('key') == 'PRI': key_info = ' \U0001f511'  # key emoji
-                elif col.get('key') == 'MUL': key_info = ' \U0001f517'  # link emoji
+                if col.get('key') == 'MUL': key_info = ' \U0001f517'
                 null = '?' if col.get('nullable') else ''
                 col_text = f"{col['name']}: {col['type']}{null}{key_info}"
                 col_item = QTreeWidgetItem([col_text])
                 col_item.setData(0, Qt.UserRole + 1, 'column')
                 col_item.setForeground(0, QColor(MUTED))
+                if col.get('key') == 'PRI':
+                    col_item.setIcon(0, QIcon(str(ICONS_DIR / 'mysql_icon' / 'key.png')))
                 item.addChild(col_item)
 
     def _on_tree_menu(self, pos):
