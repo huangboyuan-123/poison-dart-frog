@@ -5,9 +5,9 @@ from pathlib import Path
 
 API_BASE = 'http://localhost:8000'
 ICONS_DIR = Path(__file__).parent.parent / 'static'
-BG = '#2B2B2B'
-PANEL = '#3C3F41'
-INPUT_BG = '#3C3F41'
+BG = '#0D0D0D'
+PANEL = '#1A1A1A'
+INPUT_BG = '#1F1F1F'
 MUTED = '#808080'
 SUCCESS_COLOR = '#6A8759'
 DANGER_COLOR = '#BC3F3C'
