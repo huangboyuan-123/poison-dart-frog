@@ -51,9 +51,9 @@ def main():
     app.setStyleSheet(DARK_QSS)
     window = MainWindow()
     window.show()
-    # 关闭时自动杀后端
-app.aboutToQuit.connect(_stop_backend)
-app.exec()
+    # close backend on exit
+    app.aboutToQuit.connect(_stop_backend)
+    app.exec()
     _stop_backend()
 
 
