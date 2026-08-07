@@ -194,7 +194,7 @@ class MainWindow(QMainWindow, PanelAMixin, PanelBMixin, PanelCMixin, RedisPanels
 
         # MySQL 卡片
         mysql_card = QFrame()
-        mysql_card.setFixedSize(220, 280)
+        mysql_card.setFixedSize(200, 260)
         mysql_card.setCursor(Qt.CursorShape.PointingHandCursor)
         mysql_card.setStyleSheet(f"""
             QFrame {{ background: {BG}; border: 2px solid rgba(37,116,255,0.2); border-radius: 12px; }}
@@ -212,15 +212,15 @@ class MainWindow(QMainWindow, PanelAMixin, PanelBMixin, PanelCMixin, RedisPanels
         md = QLabel('关系型数据库\n表结构 · SQL查询 · 数据编辑'); md.setAlignment(Qt.AlignCenter)
         md.setStyleSheet(f'font-size: 12px; color: {MUTED}; border:none;')
         ml.addWidget(md)
-        cards.addWidget(mysql_card)
+        cards.addWidget(redis_card)
 
-        # Redis 卡片
+        # MySQL 卡片(附属)
         redis_card = QFrame()
-        redis_card.setFixedSize(220, 280)
+        redis_card.setFixedSize(250, 300)
         redis_card.setCursor(Qt.CursorShape.PointingHandCursor)
         redis_card.setStyleSheet(f"""
-            QFrame {{ background: {BG}; border: 2px solid rgba(220,50,50,0.2); border-radius: 12px; }}
-            QFrame:hover {{ border-color: #DC3232; background: #3C3F41; }}
+            QFrame {{ background: {BG}; border: 2px solid rgba(0,191,165,0.3); border-radius: 12px; }}
+            QFrame:hover {{ border-color: #00BFA5; background: #3C3F41; }}
         """)
         redis_card.mousePressEvent = lambda e: self._switch_workspace('redis')
         rl = QVBoxLayout(redis_card)
@@ -234,7 +234,7 @@ class MainWindow(QMainWindow, PanelAMixin, PanelBMixin, PanelCMixin, RedisPanels
         rd = QLabel('键值数据库\n键浏览 · 值查看 · 缓存管理'); rd.setAlignment(Qt.AlignCenter)
         rd.setStyleSheet(f'font-size: 12px; color: {MUTED}; border:none;')
         rl.addWidget(rd)
-        cards.addWidget(redis_card)
+        cards.addWidget(mysql_card)
 
         home_layout.addLayout(cards)
 
