@@ -41,7 +41,7 @@ class PanelCMixin:
         self.collapse_btn.setFixedHeight(20)
         self.collapse_btn.clicked.connect(self._toggle_panel_c)
         toggle_row.addWidget(self.collapse_btn)
-        think_toggle = QPushButton('\U0001f4ad 思考')  # thought bubble
+        think_toggle = QPushButton('思考')  # thought bubble
         think_toggle.setFixedHeight(20)
         think_toggle.clicked.connect(self._toggle_panel_d)
         toggle_row.addWidget(think_toggle)
@@ -123,7 +123,7 @@ class PanelCMixin:
         layout.setSpacing(4)
 
         hdr = QHBoxLayout()
-        hdr.addWidget(QLabel('\U0001f4ad 思考过程'))  # thought bubble
+        hdr.addWidget(QLabel('思考过程'))  # thought bubble
         hdr.addStretch()
         self.d_close_btn = QPushButton('✕')  # X mark
         self.d_close_btn.setFixedSize(20, 20)
