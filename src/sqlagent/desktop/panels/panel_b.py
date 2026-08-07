@@ -460,6 +460,10 @@ class PanelBMixin:
         col_name = cols[col]
 
         menu = QMenu(self)
+        # 选中单元格值
+        item = tbl.itemAt(pos)
+        cell_val = item.text() if item else ''
+
         act_filter = QAction(f'筛选 "{col_name}" = ...', self)
         act_filter.triggered.connect(lambda: self._filter_column(col_name))
         menu.addAction(act_filter)
@@ -467,6 +471,13 @@ class PanelBMixin:
         act_clear = QAction('清除筛选/排序', self)
         act_clear.triggered.connect(self._clear_filter_sort)
         menu.addAction(act_clear)
+
+        # 格式化 JSON
+        if cell_val and (cell_val.startswith('{') or cell_val.startswith('[')):
+            menu.addSeparator()
+            act_fmt = QAction('🎨 格式化 JSON', self)
+            act_fmt.triggered.connect(lambda v=cell_val: self._show_json_formatted(v))
+            menu.addAction(act_fmt)
 
         menu.exec(tbl.mapToGlobal(pos))
 
@@ -478,6 +489,38 @@ class PanelBMixin:
             self._filter_val = val
             self._reload_current_tab()
             self.rb_type.setText(f'筛选: {col_name} = {val}')
+
+    def _show_json_formatted(self, raw: str):
+        """格式化JSON并彩色显示在D栏"""
+        import json as _json, re as _re
+        try:
+            clean = _re.sub(r'(\d+)L\\b', r'\\1', raw)
+            clean = clean.replace('None', 'null').replace('True', 'true').replace('False', 'false')
+            data = _json.loads(clean)
+            formatted = _json.dumps(data, indent=2, ensure_ascii=False)
+            # 彩虹括号着色
+            colors = ['#4FC3F7', '#66BB6A', '#FFEE58', '#AB47BC', '#EF5350', '#FFA726']
+            html_lines = ['<pre style=\"font-family:Consolas;line-height:1.4;color:#A9B7C6;\">']
+            for line in formatted.split('\\n'):
+                depth = 0
+                colored = []
+                for ch in line:
+                    if ch in '{[':
+                        colored.append(f'<span style=\"color:{colors[depth % 6]};\"><b>{ch}</b></span>')
+                        depth += 1
+                    elif ch in '}]':
+                        depth = max(0, depth - 1)
+                        colored.append(f'<span style=\"color:{colors[depth % 6]};\"><b>{ch}</b></span>')
+                    elif ch == '\"':
+                        colored.append(f'<span style=\"color:#E8E8E8;\">{ch}</span>')
+                    else:
+                        colored.append(ch)
+                html_lines.append(''.join(colored))
+            html_lines.append('</pre>')
+            self.think_text.setHtml(''.join(html_lines))
+            self.tabs.setCurrentIndex(1)  # D栏
+        except:
+            QMessageBox.information(self, '提示', '无法解析为JSON')
 
     def _clear_filter_sort(self):
         self._sort_col = ''
