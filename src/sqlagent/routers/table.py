@@ -50,7 +50,7 @@ async def update_row(req: UpdateRowRequest):
     agent = get_agent()
     col_val = None if (not req.value or req.value.upper() == 'NULL') else req.value
     sql = sa_text(
-        f"UPDATE `{req.database}`.`{req.table}` "
+        f"UPDATE `{req.database.strip()}`.`{req.table.strip()}` "
         f"SET `{req.column}` = :val "
         f"WHERE `{req.pk_column}` = :pk_val"
     ).bindparams(val=col_val, pk_val=req.pk_value)
@@ -73,7 +73,7 @@ async def insert_row(req: InsertRowRequest):
     params = {k: (None if not v or str(v).upper() == 'NULL' else v) for k, v in req.values.items()}
 
     sql = sa_text(
-        f"INSERT INTO `{req.database}`.`{req.table}` ({col_str}) VALUES ({placeholders})"
+        f"INSERT INTO `{req.database.strip()}`.`{req.table.strip()}` ({col_str}) VALUES ({placeholders})"
     ).bindparams(**params)
 
     result = agent.db.execute_sql_raw(sql, read_only=False)
@@ -87,7 +87,7 @@ async def delete_row(req: DeleteRowRequest):
     """删除一行数据（参数化查询）。"""
     agent = get_agent()
     sql = sa_text(
-        f"DELETE FROM `{req.database}`.`{req.table}` "
+        f"DELETE FROM `{req.database.strip()}`.`{req.table.strip()}` "
         f"WHERE `{req.pk_column}` = :pk_val"
     ).bindparams(pk_val=req.pk_value)
 
