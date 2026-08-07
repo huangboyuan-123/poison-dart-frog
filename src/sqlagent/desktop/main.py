@@ -41,7 +41,7 @@ def _stop_backend():
 
 def main():
     _start_backend()
-    atexit.register(_stop_backend)
+    # atexit removed
 
     from PySide6.QtWidgets import QApplication
     from .main_window import MainWindow
@@ -51,7 +51,9 @@ def main():
     app.setStyleSheet(DARK_QSS)
     window = MainWindow()
     window.show()
-    app.exec()
+    # 关闭时自动杀后端
+app.aboutToQuit.connect(_stop_backend)
+app.exec()
     _stop_backend()
 
 
