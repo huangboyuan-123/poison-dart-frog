@@ -194,6 +194,20 @@ SQL 语法验证（EXPLAIN 检查）
 
 ---
 
+## 📸 运行截图
+
+<p align="center">
+  <img src="运行结果/sql执行效果1.png" width="45%" alt="SQL执行效果">
+  &nbsp;&nbsp;
+  <img src="运行结果/sql执行结果2.png" width="45%" alt="查询结果+AI分析">
+</p>
+
+<p align="center">
+  <img src="运行结果/Redis模块.png" width="45%" alt="Redis模块">
+</p>
+
+---
+
 ## 🏗️ 技术架构
 
 ```
