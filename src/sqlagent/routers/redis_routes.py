@@ -293,6 +293,14 @@ async def redis_execute(req: RedisExecuteRequest):
             if not line or line.startswith('#'):
                 continue
             parts = line.split()
+            # 去掉参数外层引号
+            cleaned = []
+            for p in parts:
+                if (p.startswith('"') and p.endswith('"')) or (p.startswith("'") and p.endswith("'")):
+                    cleaned.append(p[1:-1])
+                else:
+                    cleaned.append(p)
+            parts = cleaned
             cmd = parts[0].upper()
             if cmd not in VALID_CMDS:
                 continue
