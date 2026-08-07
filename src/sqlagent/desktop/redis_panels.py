@@ -232,6 +232,12 @@ class RedisPanelsMixin:
         def callback(data):
             self.redis_type_label.setText(f'类型: {data.get("type", "")}')
             value = data.get('value', '')
+            # JSON自动格式化
+            if isinstance(value, str):
+                try:
+                    value = json.dumps(json.loads(value), indent=2, ensure_ascii=False)
+                except (json.JSONDecodeError, ValueError):
+                    pass
             self.redis_value_text.setPlainText(str(value))
             self.redis_value_text.setReadOnly(False)
             self.redis_save_btn.setEnabled(True)
