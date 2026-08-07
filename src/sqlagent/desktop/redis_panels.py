@@ -232,17 +232,21 @@ class RedisPanelsMixin:
                 return {'error': str(e)}
 
         def callback(data):
-            self.redis_type_label.setText(f'类型: {data.get("type", "")}')
+            if data.get('error'):
+                self.redis_value_text.setPlainText(f"// 错误: {data['error']}")
+                return
+            self.redis_type_label.setText(f'类型: {data.get("type", "?")}')
             value = data.get('value', '')
-            # JSON自动格式化 (兼容Java Long后缀、Python None/True/False)
+            # JSON自动格式化
             if isinstance(value, str):
                 try:
                     clean = re.sub(r'(\d+)L\b', r'\1', value)
                     clean = clean.replace('None', 'null').replace('True', 'true').replace('False', 'false')
-                    value = json.dumps(json.loads(clean), indent=2, ensure_ascii=False)
+                    parsed = json.loads(clean)
+                    value = json.dumps(parsed, indent=2, ensure_ascii=False)
                 except (json.JSONDecodeError, ValueError):
                     pass
-            self.redis_value_text.setPlainText(str(value))
+            self.redis_value_text.setPlainText(str(value) if value is not None else '(nil)')
             self.redis_value_text.setReadOnly(False)
             self.redis_save_btn.setEnabled(True)
             self.redis_delete_btn.setEnabled(True)
