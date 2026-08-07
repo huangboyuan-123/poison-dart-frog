@@ -3,6 +3,7 @@ Redis 面板: 键浏览、值查看、AI命令生成/执行
 """
 from typing import Dict
 
+import json
 import requests
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor, QFont, QIcon, QAction
