@@ -86,7 +86,7 @@ class MainWindow(QMainWindow, PanelAMixin, PanelBMixin, PanelCMixin, RedisPanels
         # ── 自定义标题栏 ──
         titlebar = QWidget()
         titlebar.setFixedHeight(34)
-        titlebar.setStyleSheet(f'background: #0D0D0D; border-bottom: 1px solid rgba(255,255,255,0.06);')
+        titlebar.setStyleSheet(f'background: #1A1A1D; border-bottom: 1px solid rgba(255,255,255,0.06);')
         tb_layout = QHBoxLayout(titlebar)
         tb_layout.setContentsMargins(10, 0, 0, 0)
         tb_layout.setSpacing(0)
@@ -200,7 +200,7 @@ class MainWindow(QMainWindow, PanelAMixin, PanelBMixin, PanelCMixin, RedisPanels
         redis_card.setCursor(Qt.CursorShape.PointingHandCursor)
         redis_card.setStyleSheet(f"""
             QFrame {{ background: {BG}; border: 2px solid rgba(139,58,58,0.3); border-radius: 12px; }}
-            QFrame:hover {{ border-color: #8B3A3A; background: #1A1A1A; }}
+            QFrame:hover {{ border-color: #8B3A3A; background: #232328; }}
         """)
         redis_card.mousePressEvent = lambda e: self._switch_workspace('redis')
         rl = QVBoxLayout(redis_card)
@@ -223,7 +223,7 @@ class MainWindow(QMainWindow, PanelAMixin, PanelBMixin, PanelCMixin, RedisPanels
         mysql_card.setCursor(Qt.CursorShape.PointingHandCursor)
         mysql_card.setStyleSheet(f"""
             QFrame {{ background: {BG}; border: 2px solid rgba(255,255,255,0.08); border-radius: 12px; }}
-            QFrame:hover {{ border-color: rgba(255,255,255,0.15); background: #1A1A1A; }}
+            QFrame:hover {{ border-color: rgba(255,255,255,0.15); background: #232328; }}
         """)
         mysql_card.mousePressEvent = lambda e: self._switch_workspace('mysql')
         ml = QVBoxLayout(mysql_card)
