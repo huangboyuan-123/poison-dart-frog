@@ -68,6 +68,7 @@ async def get_key(key: str):
     try:
         r = get_redis()
         t = r.type(key)
+        if isinstance(t, bytes): t = t.decode()
         if t == 'none':
             raise HTTPException(status_code=404, detail=f"键 '{key}' 不存在")
 
