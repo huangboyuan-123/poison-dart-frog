@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 from .constants import (
     API_BASE, BG, ACCENT_COLOR, MUTED, ICONS_DIR,
 )
-from .dialogs.table_designer import _RoundedWidget
+# Removed _RoundedWidget import
 from .store import load_db_configs
 from .panels.panel_a import PanelAMixin
 from .panels.panel_b import PanelBMixin
@@ -160,7 +160,9 @@ class MainWindow(QMainWindow, PanelAMixin, PanelBMixin, PanelCMixin, RedisPanels
         act_clear_hist.triggered.connect(self._clear_history)
         tools_menu.addAction(act_clear_hist)
 
-        central = _RoundedWidget(self)
+        central = QWidget(self)
+        central.setStyleSheet(f'QWidget#central{{background:{C.BG};border-radius:10px;}}')
+        central.setObjectName('central')
         self.setCentralWidget(central)
         root_layout = QVBoxLayout(central)
         root_layout.setContentsMargins(3, 3, 3, 3)
