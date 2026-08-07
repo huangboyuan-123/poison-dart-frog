@@ -1,5 +1,5 @@
 """
-箭毒蛙 — Redis 专用版 配色 & 常量
+配色 & 常量
 """
 from pathlib import Path
 
@@ -17,6 +17,9 @@ GRADIENT_START = '#00BFA5'
 GRADIENT_MID = '#00E676'
 GRADIENT_END = '#00B0FF'
 
-REDIS_CONFIG_FILE = Path(__file__).parent.parent.parent.parent / '.redis_configs.json'
-HISTORY_FILE = Path.home() / '.dendrobates_history.json'
+DB_CONFIG_FILE = Path(__file__).parent.parent.parent.parent / '.db_configs.json'
+HISTORY_FILE = Path.home() / '.sqlagent_history.json'
+
+DANGER_KW = ['DROP TABLE', 'DROP DATABASE', 'TRUNCATE', 'DELETE FROM']
+
 ENV_FILE = Path(__file__).parent.parent.parent.parent / '.env'
