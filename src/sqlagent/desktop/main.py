@@ -48,6 +48,7 @@ def main():
     from .theme import DARK_QSS
 
     app = QApplication(sys.argv)
+    app.setStyle('Fusion')  # 启用自定义滚动条
     app.setStyleSheet(DARK_QSS)
     window = MainWindow()
     window.show()
