@@ -310,6 +310,7 @@ async def redis_execute(req: RedisExecuteRequest):
             expected = type_sensitive.get(cmd)
             if expected and args:
                 t = r.type(args[0])
+                if isinstance(t, bytes): t = t.decode()
                 if t != expected and t != 'none':
                     results.append(f'{cmd}: 类型错误 — {args[0]} 是 {t}, 需要 {expected}')
                     continue
