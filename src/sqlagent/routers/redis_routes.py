@@ -215,7 +215,7 @@ async def redis_query(req: RedisQueryRequest):
             f"$correct-command$\n"
             f"HGETALL user:1\n\n"
             f"HGETALL user:2\n\n"
-            f"禁止: HGETALL user:1HGETALL user:2 (多条合在一行)"
+            f"禁止: 用引号包裹值 (如 SET k \"v\"), 多条合在一行"
         )
 
         from langchain_openai import ChatOpenAI
@@ -292,10 +292,7 @@ async def redis_execute(req: RedisExecuteRequest):
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
-            try:
-                parts = shlex.split(line)
-            except ValueError:
-                parts = line.split()
+            parts = line.split()
             cmd = parts[0].upper()
             if cmd not in VALID_CMDS:
                 continue
