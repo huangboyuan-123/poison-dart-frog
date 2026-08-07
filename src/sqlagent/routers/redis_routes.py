@@ -272,13 +272,17 @@ async def redis_execute(req: RedisExecuteRequest):
                       'PUBLISH','SUBSCRIBE','UNSUBSCRIBE','PUBSUB',
                       'MULTI','EXEC','DISCARD','WATCH','UNWATCH'}
 
+        # 预拆分黏连命令: HSET k vHSET k2 v2 → HSET k v\nHSET k2 v2
+        for kw in ['HSET','HGETALL','HGET','HDEL','GET','SET','DEL','LPUSH','RPUSH','LRANGE',
+                    'SADD','SMEMBERS','ZADD','ZRANGE','TYPE','INCR','DECR','EXPIRE','TTL']:
+            cmd_text = _re.sub(rf'(\S)({kw}\s)', r'\1\n\2', cmd_text)
+
         for line in cmd_text.strip().split('\n'):
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
             parts = line.split()
             cmd = parts[0].upper()
-            # 跳过非命令的分析文本
             if cmd not in VALID_CMDS:
                 continue
             args = parts[1:]
