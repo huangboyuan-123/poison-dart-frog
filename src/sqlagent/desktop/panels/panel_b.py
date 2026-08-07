@@ -198,7 +198,7 @@ class PanelBMixin:
                       is_temp: bool = False, sql: str = '', db_name: str = '', pk_col: str = ''):
         """新建数据Tab"""
         table = QTableWidget()
-        table.setAlternatingRowColors(True)
+        # 统一暗色背景(不用系统交替行色)
         table.horizontalHeader().setStretchLastSection(True)
         table.setColumnCount(len(columns))
         table.setHorizontalHeaderLabels(columns)
